@@ -5,6 +5,7 @@
 from known_types import KnownType
 from typing import Dict, List, Tuple
 from standard_fields import *
+import os
 
 
 class UID:
@@ -16,7 +17,7 @@ class UID:
 
     def get():
         UID.next_id += 1
-        return 'uid'+str(UID.next_id)
+        return "uid" + str(UID.next_id)
 
     def reset():
         UID.next_id = 0
@@ -28,31 +29,31 @@ class CodeWriter:
     """
 
     def __init__(self):
-        self.code = ''
+        self.code = ""
         self.indent = 0
 
     def write(self, text: str, indent: bool = False, indent_new_lines=False):
-        padding = ''
+        padding = ""
         if indent_new_lines:
-            padding = '\t'*self.indent
-            if len(self.code)>0 and self.code[-1] == '\n':
+            padding = "\t" * self.indent
+            if len(self.code) > 0 and self.code[-1] == "\n":
                 self.code += padding
 
-        if len(text)>0 and text[-1]=='\n':
-            text_to_insert = text[:-1].replace('\n', '\n'+padding)+'\n'
+        if len(text) > 0 and text[-1] == "\n":
+            text_to_insert = text[:-1].replace("\n", "\n" + padding) + "\n"
         else:
-            text_to_insert = text.replace('\n', '\n'+padding)
+            text_to_insert = text.replace("\n", "\n" + padding)
 
         if not indent:
             self.code += text_to_insert
         else:
-            self.code += '\t'*max(0, self.indent) + text_to_insert
+            self.code += "\t" * max(0, self.indent) + text_to_insert
 
     def new_line(self):
-        self.code += '\n'
+        self.code += "\n"
 
     def writeln(self, text: str):
-        self.code += '\t'*max(0, self.indent)+text+'\n'
+        self.code += "\t" * max(0, self.indent) + text + "\n"
 
     def increase_indent(self):
         self.indent += 1
@@ -96,29 +97,33 @@ class GeneratedCode:
     def get_apply(self):
         return self.apply
 
-    def dump(self,output_dir:str):
-        f = open(output_dir+'/a_headers.p4','w')
+    def dump(self, output_dir: str):
+        path = os.path.join(output_dir, "a_headers.p4")
+        f = open(path, "w")
         f.write(self.get_headers().get_code())
 
-        f = open(output_dir+'/a_hdrlist.p4','w')
+        path = os.path.join(output_dir, "a_hdrlist.p4")
+        f = open(path, "w")
         f.write(self.get_hdrlist().get_code())
 
-        f = open(output_dir+'/a_declarations.p4','w')
+        path = os.path.join(output_dir, "a_declarations.p4")
+        f = open(path, "w")
         f.write(self.get_decl().get_code())
 
-        f = open(output_dir+'/a_chains.p4','w')
+        path = os.path.join(output_dir, "a_chains.p4")
+        f = open(path, "w")
         f.write(self.get_parser().get_code())
 
-        f = open(output_dir+'/a_apply.p4','w')
+        path = os.path.join(output_dir, "a_apply.p4")
+        f = open(path, "w")
         f.write(self.get_apply().get_code())
 
-    def	concat(self,other,add_padding=True):
-        self.headers.write(other.headers.get_code(),indent_new_lines=add_padding)
-        self.hdrlist.write(other.hdrlist.get_code(),indent_new_lines=add_padding)
-        self.parser.write(other.parser.get_code(),indent_new_lines=add_padding)
-        self.decl.write(other.decl.get_code(),indent_new_lines=add_padding)
-        self.apply.write(other.apply.get_code(),indent_new_lines=add_padding)
-
+    def concat(self, other, add_padding=True):
+        self.headers.write(other.headers.get_code(), indent_new_lines=add_padding)
+        self.hdrlist.write(other.hdrlist.get_code(), indent_new_lines=add_padding)
+        self.parser.write(other.parser.get_code(), indent_new_lines=add_padding)
+        self.decl.write(other.decl.get_code(), indent_new_lines=add_padding)
+        self.apply.write(other.apply.get_code(), indent_new_lines=add_padding)
 
 
 def gen_struct(description: List[Tuple[str, KnownType]], name: str = None):
@@ -132,77 +137,86 @@ def gen_struct(description: List[Tuple[str, KnownType]], name: str = None):
     uid = UID.get()
     if name == None:
         name = "genstruct"
-    name = name+"_"+uid
+    name = name + "_" + uid
 
     # generate definition
-    cw.writeln("struct "+name+"{")
+    cw.writeln("struct " + name + "{")
     for n, t in description:
         cw.writeln("\t{} {};".format(t.get_p4_type(), n))
     cw.writeln("}")
     return name, cw.get_code()
 
 
-def gen_decision_parser_state(conditions: str, next_state: str, target_state: str, lookahead_struct=None, state_name: str = ""):
+def gen_decision_parser_state(
+    conditions: str,
+    next_state: str,
+    target_state: str,
+    lookahead_struct=None,
+    state_name: str = "",
+):
 
     gc = GeneratedCode()
 
     # state name
     if state_name == "":
-        state_name = 'check_'+UID.get()
-    gc.get_parser().writeln('state {}{{'.format(state_name))
+        state_name = "check_" + UID.get()
+    gc.get_parser().writeln("state {}{{".format(state_name))
     gc.get_parser().increase_indent()
 
     # lookahead if required
     if lookahead_struct != None:
         struct_name, header_code = gen_struct(lookahead_struct)
         gc.get_headers().write(header_code)
-        gc.get_parser().writeln("{} tmp = pkt.lookahead<{}>();\n".format(struct_name, struct_name))
+        gc.get_parser().writeln(
+            "{} tmp = pkt.lookahead<{}>();\n".format(struct_name, struct_name)
+        )
 
     # select
     def get_handle(f):
         if isinstance(f, StandardField):
             return f.get_handle()
         elif lookahead_struct != None:
-            d = {k: 'tmp.'+f for k, _ in lookahead_struct}
+            d = {k: "tmp." + f for k, _ in lookahead_struct}
             if f in d:
                 return d[f]
-        raise Exception('unknown field '+str(f))
+        raise Exception("unknown field " + str(f))
 
     gc.get_parser().write("transition select(", indent=True)
-    gc.get_parser().write(','.join([get_handle(c) for c, _ in conditions]))
+    gc.get_parser().write(",".join([get_handle(c) for c, _ in conditions]))
     gc.get_parser().write("){")
     gc.get_parser().new_line()
 
     # cases
     gc.get_parser().increase_indent()
     gc.get_parser().writeln(
-        '('+','.join([str(c) for _, c in conditions]) + ') : '+target_state+';')
-    gc.get_parser().writeln('default: '+next_state+';')
+        "(" + ",".join([str(c) for _, c in conditions]) + ") : " + target_state + ";"
+    )
+    gc.get_parser().writeln("default: " + next_state + ";")
     gc.get_parser().decrease_indent()
-    gc.get_parser().writeln('}')
+    gc.get_parser().writeln("}")
 
     gc.get_parser().decrease_indent()
-    gc.get_parser().writeln('}')
+    gc.get_parser().writeln("}")
 
     return state_name, gc
 
 
-def gen_header(description,name=None):
+def gen_header(description, name=None):
     cw = CodeWriter()
-    
+
     # decide name and handle
     uid = UID.get()
-    if name==None:
-        name="genhdr"
-    handle = name+"_"+uid
-    name = handle+'_h'
-    
+    if name == None:
+        name = "genhdr"
+    handle = name + "_" + uid
+    name = handle + "_h"
+
     # generate definition
-    cw.writeln("header "+name+"{")
-    for n,t in description:
-        cw.writeln("\t{} {};".format(t.get_p4_type(),n))
+    cw.writeln("header " + name + "{")
+    for n, t in description:
+        cw.writeln("\t{} {};".format(t.get_p4_type(), n))
     cw.writeln("}")
-    return name,handle,cw.get_code()
+    return name, handle, cw.get_code()
 
 
 def gen_header_parser_state(header_handle: str, state_name: str = ""):
@@ -211,23 +225,21 @@ def gen_header_parser_state(header_handle: str, state_name: str = ""):
 
     # state name
     if state_name == "":
-        state_name = 'parse_'+UID.get()
-    gc.get_parser().writeln('state {}{{'.format(state_name))
+        state_name = "parse_" + UID.get()
+    gc.get_parser().writeln("state {}{{".format(state_name))
     gc.get_parser().increase_indent()
 
-    gc.get_parser().writeln('pkt.extract(hdr.{});'.format(header_handle))
-    
-    gc.get_parser().writeln('transition accept;')
+    gc.get_parser().writeln("pkt.extract(hdr.{});".format(header_handle))
+
+    gc.get_parser().writeln("transition accept;")
 
     gc.get_parser().decrease_indent()
-    gc.get_parser().writeln('}')
+    gc.get_parser().writeln("}")
 
     return state_name, gc
 
 
-
 class SharedElement:
-    
     def get_name(self):
         raise NotImplementedError()
 
@@ -235,16 +247,26 @@ class SharedElement:
         raise NotImplementedError()
 
     def get_generated_code(self):
-        raise NotImplementedError()    
-    
-    
+        raise NotImplementedError()
+
 
 class FlowProcessor:
-    '''
+    """
     The FlowProcessor defines the input-output structures and the processing steps for a given packet.
-    '''
+    """
 
-    def __init__(self, istruct, ostruct=None, mstruct=None, locals=None, method='READ', iname=None, oname=None, state:List[SharedElement]=None, **kwargs):
+    def __init__(
+        self,
+        istruct,
+        ostruct=None,
+        mstruct=None,
+        locals=None,
+        method="READ",
+        iname=None,
+        oname=None,
+        state: List[SharedElement] = None,
+        **kwargs
+    ):
         self.istruct = istruct
         self.ostruct = ostruct
         self.mstruct = mstruct
@@ -256,97 +278,111 @@ class FlowProcessor:
         self.ihandle = None
         self.iparser = None
         self.state = []
-        if state!=None:
+        if state != None:
             self.state = state
 
         self.iname, self.ihandle, self.icode = gen_header(self.istruct, self.iname)
 
-        if self.ostruct!=None:
+        if self.ostruct != None:
             self.oname, self.ohandle, self.ocode = gen_header(self.ostruct, self.oname)
         else:
             self.oname, self.ohandle, self.ocode = None, None, None
 
-        if self.mstruct!=None:
+        if self.mstruct != None:
             self.mname, self.mhandle, self.mcode = gen_header(self.mstruct)
         else:
             self.mname, self.mhandle, self.mcode = None, None, None
 
-        self.env = Environment(self.istruct,self.ostruct,self.mstruct,self.locals,self.ihandle,self.ohandle,self.mhandle,state)
+        self.env = Environment(
+            self.istruct,
+            self.ostruct,
+            self.mstruct,
+            self.locals,
+            self.ihandle,
+            self.ohandle,
+            self.mhandle,
+            state,
+        )
 
         self.block = Block(self.env)
 
-    def get_generated_code(self,add_else=False):
+    def get_generated_code(self, add_else=False):
         # check if it is already generated
         if self.gc != None:
             return self.gc
         self.gc = GeneratedCode()
 
         # header definitions
-        self.gc.get_hdrlist().writeln('{} {};'.format(self.iname, self.ihandle))
+        self.gc.get_hdrlist().writeln("{} {};".format(self.iname, self.ihandle))
         self.gc.get_headers().write(self.icode)
 
         if self.ostruct != None:
-            self.gc.get_hdrlist().writeln('{} {};'.format(self.oname, self.ohandle))
+            self.gc.get_hdrlist().writeln("{} {};".format(self.oname, self.ohandle))
             self.gc.get_headers().write(self.ocode)
 
         if self.mstruct != None:
-            self.gc.get_hdrlist().writeln('{} {};'.format(self.mname, self.mhandle))
+            self.gc.get_hdrlist().writeln("{} {};".format(self.mname, self.mhandle))
             self.gc.get_headers().write(self.mcode)
 
         # parser state
-        iparser, tmpgc = gen_header_parser_state(self.ihandle,state_name='parse_'+self.ihandle)
+        iparser, tmpgc = gen_header_parser_state(
+            self.ihandle, state_name="parse_" + self.ihandle
+        )
         self.gc.concat(tmpgc)
 
         # apply parts
-        self.gc.get_apply().writeln('if (hdr.{}.isValid()){{'.format(self.ihandle))
+        self.gc.get_apply().writeln("if (hdr.{}.isValid()){{".format(self.ihandle))
         self.gc.get_apply().increase_indent()
 
         if self.ostruct != None:
-            self.gc.get_apply().writeln('hdr.{}.setValid();'.format(self.ohandle))
-            self.gc.get_apply().writeln('#define OUTPUT_HEADER_SIZE {}'.format(hdr_len(self.ostruct)))
+            self.gc.get_apply().writeln("hdr.{}.setValid();".format(self.ohandle))
+            self.gc.get_apply().writeln(
+                "#define OUTPUT_HEADER_SIZE {}".format(hdr_len(self.ostruct))
+            )
         else:
-            self.gc.get_apply().writeln('#define OUTPUT_HEADER_SIZE {}'.format(hdr_len(self.istruct)))
+            self.gc.get_apply().writeln(
+                "#define OUTPUT_HEADER_SIZE {}".format(hdr_len(self.istruct))
+            )
 
         if self.mstruct != None:
-            self.gc.get_apply().writeln('hdr.{}.setValid();'.format(self.mhandle))
+            self.gc.get_apply().writeln("hdr.{}.setValid();".format(self.mhandle))
 
         if self.locals != None:
-            for n,t in self.locals:
-                self.gc.get_apply().writeln('{} {};'.format(t.get_p4_type(),n))
+            for n, t in self.locals:
+                self.gc.get_apply().writeln("{} {};".format(t.get_p4_type(), n))
 
         self.gc.concat(self.block.get_generated_code())
 
         if self.mstruct != None:
-            self.gc.get_apply().writeln('hdr.{}.setInvalid();'.format(self.mhandle))
+            self.gc.get_apply().writeln("hdr.{}.setInvalid();".format(self.mhandle))
 
-        if self.ostruct!=None:
-            self.gc.get_apply().writeln('hdr.{}.setInvalid();'.format(self.ihandle))
+        if self.ostruct != None:
+            self.gc.get_apply().writeln("hdr.{}.setInvalid();".format(self.ihandle))
 
         # adjust changes in packet size
-        if self.ostruct!=None:
+        if self.ostruct != None:
             diff = hdr_len(self.ostruct) - hdr_len(self.istruct)
-            self.gc.get_apply().writeln('meta.size_growth = {};'.format(max(0,diff)))
-            self.gc.get_apply().writeln('meta.size_loss = {};'.format(max(0,-diff)))
+            self.gc.get_apply().writeln("meta.size_growth = {};".format(max(0, diff)))
+            self.gc.get_apply().writeln("meta.size_loss = {};".format(max(0, -diff)))
 
-        
-        self.gc.get_apply().writeln('#undef OUTPUT_HEADER_SIZE')
+        self.gc.get_apply().writeln("#undef OUTPUT_HEADER_SIZE")
         self.gc.get_apply().decrease_indent()
-        
-        self.gc.get_apply().writeln('}')
+
+        self.gc.get_apply().writeln("}")
         if add_else:
-            self.gc.get_apply().write('else ')
+            self.gc.get_apply().write("else ")
 
         self.iparser = iparser
 
         return self.gc
 
     def get_ihandle(self) -> str:
-        if self.gc==None:
+        if self.gc == None:
             self.get_generated_code()
         return self.ihandle
 
     def get_iparser(self) -> str:
-        if self.gc==None:
+        if self.gc == None:
             self.get_generated_code()
         return self.iparser
 
@@ -364,45 +400,48 @@ class FlowProcessor:
 
 
 class FlowSelector:
-    '''
+    """
     The FlowSelector directs the packets towards a given FlowProcessor.
-    '''
+    """
 
-    def __init__(self,chain,conditions,flow_processor,lookahead_struct=None):
+    def __init__(self, chain, conditions, flow_processor, lookahead_struct=None):
         self.chain = chain
         self.conditions = conditions
         self.lookahed_struct = lookahead_struct
         self.flow_processor = flow_processor
         self.gc = None
         self.name = None
-        
-    def get_generated_code(self,next_state:str):
-        if self.gc==None:
-            self.name,self.gc = gen_decision_parser_state(self.conditions, next_state, 
-                                    target_state=self.flow_processor.get_iparser(),
-                                    lookahead_struct=self.lookahed_struct)
-        return self.name,self.gc
-    
+
+    def get_generated_code(self, next_state: str):
+        if self.gc == None:
+            self.name, self.gc = gen_decision_parser_state(
+                self.conditions,
+                next_state,
+                target_state=self.flow_processor.get_iparser(),
+                lookahead_struct=self.lookahed_struct,
+            )
+        return self.name, self.gc
+
     def get_chain(self):
         return self.chain
 
 
-def generate_chain(chain_name:str,selectors:List[FlowSelector]):
+def generate_chain(chain_name: str, selectors: List[FlowSelector]):
     gc = GeneratedCode()
-        
-    next_state = 'accept'
+
+    next_state = "accept"
     for s in reversed(selectors):
         state_name, tmp = s.get_generated_code(next_state=next_state)
         gc.concat(tmp)
         next_state = state_name
-    
-    gc.get_parser().writeln('#define CHAIN_{}'.format(chain_name.upper()))
-    gc.get_parser().writeln('state chain_{}{{'.format(chain_name.lower()))
+
+    gc.get_parser().writeln("#define CHAIN_{}".format(chain_name.upper()))
+    gc.get_parser().writeln("state chain_{}{{".format(chain_name.lower()))
     gc.get_parser().increase_indent()
-    gc.get_parser().writeln('transition {};'.format(next_state))    
+    gc.get_parser().writeln("transition {};".format(next_state))
     gc.get_parser().decrease_indent()
-    gc.get_parser().writeln('}')
-    
+    gc.get_parser().writeln("}")
+
     return gc
 
 
@@ -411,128 +450,162 @@ class Solution:
         self.selectors = []
         self.processors = []
         self.state = []
-    
-    def add_flow_processor(self,fp):
+
+    def add_flow_processor(self, fp):
         self.processors.append(fp)
         for s in fp.get_state():
             if s not in self.state:
                 self.state.append(s)
-    
-    def add_flow_selector(self,fs):
+
+    def add_flow_selector(self, fs):
         self.selectors.append(fs)
-    
-    def add_state(self,stateful_element):
+
+    def add_state(self, stateful_element):
         self.state.append(stateful_element)
-    
+
     def get_generated_code(self):
         gc = GeneratedCode()
-        
+
         # generate stateful elements
         for s in self.state:
             tmp = s.get_generated_code()
             gc.concat(tmp)
-        
+
         # generate processing parts
         for i, fp in enumerate(self.processors):
-            tmp = fp.get_generated_code(add_else=(i < len(self.processors)-1))
+            tmp = fp.get_generated_code(add_else=(i < len(self.processors) - 1))
             gc.concat(tmp)
-            
+
         # generate parser chains
         chains = dict()
         for fs in self.selectors:
             if fs.get_chain() not in chains:
                 chains[fs.get_chain()] = []
             chains[fs.get_chain()].append(fs)
-            
-        for chain_name,selectors in chains.items():
-            tmp = generate_chain(chain_name,selectors)
+
+        for chain_name, selectors in chains.items():
+            tmp = generate_chain(chain_name, selectors)
             gc.concat(tmp)
 
         return gc
 
-        
 
 class Environment:
-    
-    def __init__(self,istruct,ostruct,mstruct,locals,iheader,oheader,mheader,state:List[SharedElement]):
+    def __init__(
+        self,
+        istruct,
+        ostruct,
+        mstruct,
+        locals,
+        iheader,
+        oheader,
+        mheader,
+        state: List[SharedElement],
+    ):
         self.info = dict()
-        for n,t in istruct:
+        for n, t in istruct:
             if n in self.info:
                 raise Exception('name "{}" is not unique'.format(n))
-            self.info[n] = { 'name':n, 'type':t, 'writeable':True, 'place': 'istruct', 'handle':'hdr.{}.{}'.format(iheader,n) }
-            
-        if ostruct!=None:
-            for n,t in ostruct:
-                if n in self.info:
-                    raise Exception('name "{}" is not unique'.format(n))
-                self.info[n] = { 'name':n, 'type':t, 'writeable':True, 'place': 'ostruct', 'handle':'hdr.{}.{}'.format(oheader,n) }
+            self.info[n] = {
+                "name": n,
+                "type": t,
+                "writeable": True,
+                "place": "istruct",
+                "handle": "hdr.{}.{}".format(iheader, n),
+            }
 
-        if mstruct!=None:            
-            for n,t in mstruct:
+        if ostruct != None:
+            for n, t in ostruct:
                 if n in self.info:
                     raise Exception('name "{}" is not unique'.format(n))
-                self.info[n] = { 'name':n, 'type':t, 'writeable':True, 'place': 'mstruct', 'handle':'hdr.{}.{}'.format(mheader,n) }
-            
-        if locals!=None:            
-            for n,t in locals:
-                if n in self.info:
-                    raise Exception('name "{}" is not unique'.format(n))
-                self.info[n] = { 'name':n, 'type':t, 'writeable':True, 'place': 'locals', 'handle':'{}'.format(n) }
+                self.info[n] = {
+                    "name": n,
+                    "type": t,
+                    "writeable": True,
+                    "place": "ostruct",
+                    "handle": "hdr.{}.{}".format(oheader, n),
+                }
 
-        if state!=None:
+        if mstruct != None:
+            for n, t in mstruct:
+                if n in self.info:
+                    raise Exception('name "{}" is not unique'.format(n))
+                self.info[n] = {
+                    "name": n,
+                    "type": t,
+                    "writeable": True,
+                    "place": "mstruct",
+                    "handle": "hdr.{}.{}".format(mheader, n),
+                }
+
+        if locals != None:
+            for n, t in locals:
+                if n in self.info:
+                    raise Exception('name "{}" is not unique'.format(n))
+                self.info[n] = {
+                    "name": n,
+                    "type": t,
+                    "writeable": True,
+                    "place": "locals",
+                    "handle": "{}".format(n),
+                }
+
+        if state != None:
             for s in state:
                 if s.get_name() in self.info:
-                    raise Exception('name "{}" is not unique'.format(n))            
-                self.info[s.get_name()] = { 'name':s.get_name(), 'type':s.get_type(), 'place': 'state', 'handle':s.get_name() }
+                    raise Exception('name "{}" is not unique'.format(n))
+                self.info[s.get_name()] = {
+                    "name": s.get_name(),
+                    "type": s.get_type(),
+                    "place": "state",
+                    "handle": s.get_name(),
+                }
 
-
-    def get_varinfo(self,vname:str):
+    def get_varinfo(self, vname: str):
         return self.info[vname]
-    
-    def has_var(self,vname:str):
+
+    def has_var(self, vname: str):
         return vname in self.info
-        
-        
-        
+
+
 class Command:
-    
     def should_return(self):
         return False
 
     def get_generated_code(self):
-        raise Exception('Not implemented by subclass')
+        raise Exception("Not implemented by subclass")
 
     def has_env(self):
-        return self.env!=None
+        return self.env != None
 
-    def set_env(self,env):
+    def set_env(self, env):
         self.env = env
-    
+
+
 class Block:
-    
-    def __init__(self,env):
+    def __init__(self, env):
         self.env = env
         self.seq = []
-        
-    def add(self,command:Command):
+
+    def add(self, command: Command):
         if not command.has_env():
             command.set_env(self.env)
             command.check()
-        
+
         self.seq.append(command)
-        
+
         if command.should_return():
             return command.get_return_object(self)
         else:
             return self
-        
+
     def get_generated_code(self):
         gc = GeneratedCode()
         for c in self.seq:
             gc.concat(c.get_generated_code())
         return gc
-    
-    def test(self,test_env):
+
+    def test(self, test_env):
         for s in self.seq:
             s.execute(test_env)
         return test_env
