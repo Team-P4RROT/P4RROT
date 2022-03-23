@@ -257,6 +257,61 @@ class GreaterThan(StrictComparator):
     def execute(self,test_env):
         test_env[self.target] = test_env[self.operand_a] > test_env[self.operand_b]
 
+class GreaterThanTable(StrictComparator):
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t  = self.env.get_varinfo(self.target)
+        a  = self.env.get_varinfo(self.operand_a)
+        b  = self.env.get_varinfo(self.operand_b)
+        declaration = gc.get_decl()
+        table_name = gc.generate_table_name()
+        apply = gc.get_apply()
+        difference_variable = gc.generate_variable_name()
+        setter_action = gc.generate_setter_action_name()
+        declaration.writeln("{} {};".format(a["type"].get_p4_type(), difference_variable))
+        for bool_val in ["true", "false"]:
+            declaration.writeln("action {}_{}() {{".format(setter_action, bool_val))
+            declaration.increase_indent()
+            declaration.writeln("{} = {};".format(t["handle"], 1 if bool_val == "true" else 0))
+            declaration.decrease_indent()
+            declaration.writeln("}")
+        declaration.writeln("table {} {{".format(table_name))
+        declaration.increase_indent()
+        declaration.writeln("actions = {")
+        declaration.increase_indent()
+        declaration.writeln("{}_true;".format(setter_action))
+        declaration.writeln("{}_false;".format(setter_action))
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        declaration.writeln("key = {")
+        declaration.increase_indent()
+        declaration.writeln("{}: ternary;".format(difference_variable))
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        declaration.writeln("size = 2;")
+        declaration.writeln("const default_action = {}_true;".format(setter_action))
+        declaration.writeln("const entries = {")
+        declaration.increase_indent()
+        type_size_in_bits = a["type"].get_size()*8
+        zero_entry = "0b" + "0" * type_size_in_bits + "&&&" + "0b" + "1" * type_size_in_bits
+        sign_entry = "0b" + "0" * type_size_in_bits + "&&&" + "0b1" + "0" * (type_size_in_bits-1)
+        declaration.writeln("{} : {}_false();".format(zero_entry,setter_action))
+        declaration.writeln("{} : {}_false();".format(sign_entry,setter_action))
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        #const default_action =
+        
+        
+        apply.writeln('{} = {} - {};'.format(difference_variable,a['handle'],b['handle']))
+        apply.writeln('{}.apply();'.format(table_name))
+        return gc
+
+    def execute(self,test_env):
+        test_env[self.target] = test_env[self.operand_a] > test_env[self.operand_b]
+
 class LessThan(StrictComparator):
     
     def get_generated_code(self):
