@@ -7,8 +7,8 @@ action generated_setter_action_0_false() {
 }
 table generated_table_0 {
 	actions = {
-		generated_setter_action_0_true;
-		generated_setter_action_0_false;
+	generated_setter_action_0_true_true;
+	generated_setter_action_0_false_true;
 	}
 	key = {
 		generated_variable_0: ternary;

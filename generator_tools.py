@@ -84,19 +84,21 @@ class GeneratedCode:
         self.generated_variable_count = 0
         self.generated_table_count = 0
         self.generated_setter_action_count = 0
-    
+
     def generate_variable_name(self):
         variable_name = "generated_variable_" + str(self.generated_variable_count)
         self.generated_variable_count += 1
         return variable_name
-    
+
     def generate_table_name(self):
         table_name = "generated_table_" + str(self.generated_table_count)
         self.generated_table_count += 1
         return table_name
-    
+
     def generate_setter_action_name(self):
-        action_name = "generated_setter_action_" + str(self.generated_setter_action_count)
+        action_name = "generated_setter_action_" + str(
+            self.generated_setter_action_count
+        )
         self.generated_setter_action_count += 1
         return action_name
 
