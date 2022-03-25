@@ -285,7 +285,7 @@ class Table:
         declaration.increase_indent()
         declaration.writeln("actions = {")
         for action in self.actions:
-            declaration.writeln("{}_true;".format(action))
+            declaration.writeln("{};".format(action))
         declaration.writeln("}")
         declaration.writeln("key = {")
         declaration.increase_indent()
@@ -317,10 +317,10 @@ class GreaterThanTable(StrictComparator):
         a = self.env.get_varinfo(self.operand_a)
         b = self.env.get_varinfo(self.operand_b)
         declaration = gc.get_decl()
-        table_name = gc.generate_table_name()
+        table_name = "eval_table_" + UID.get()
         apply = gc.get_apply()
-        difference_variable = gc.generate_variable_name()
-        setter_action = gc.generate_setter_action_name()
+        difference_variable = "difference_variable_" + UID.get()
+        setter_action = "setter_action_" + UID.get()
         declaration.writeln(
             "{} {};".format(a["type"].get_p4_type(), difference_variable)
         )
@@ -364,6 +364,150 @@ class GreaterThanTable(StrictComparator):
 
     def execute(self, test_env):
         test_env[self.target] = test_env[self.operand_a] > test_env[self.operand_b]
+
+
+class SmallerThanTable(StrictComparator):
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t = self.env.get_varinfo(self.target)
+        a = self.env.get_varinfo(self.operand_a)
+        b = self.env.get_varinfo(self.operand_b)
+        declaration = gc.get_decl()
+        table_name = "eval_table_" + UID.get()
+        apply = gc.get_apply()
+        difference_variable = "difference_variable_" + UID.get()
+        setter_action = "setter_action_" + UID.get()
+        declaration.writeln(
+            "{} {};".format(a["type"].get_p4_type(), difference_variable)
+        )
+        for bool_val in ["true", "false"]:
+            declaration.writeln("action {}_{}() {{".format(setter_action, bool_val))
+            declaration.increase_indent()
+            declaration.writeln(
+                "{} = {};".format(t["handle"], 1 if bool_val == "true" else 0)
+            )
+            declaration.decrease_indent()
+            declaration.writeln("}")
+        type_size_in_bits = a["type"].get_size() * 8
+        zero_entry = (
+            "0b" + "0" * type_size_in_bits + "&&&" + "0b" + "1" * type_size_in_bits
+        )
+        sign_entry = (
+            "0b1"
+            + "0" * (type_size_in_bits - 1)
+            + "&&&"
+            + "0b1"
+            + "0" * (type_size_in_bits - 1)
+        )
+        actions = [setter_action + "_true", setter_action + "_false"]
+        key = [{"name": difference_variable, "match_type": "ternary"}]
+        size = 2
+        const_entries = [
+            {"value": zero_entry, "action": setter_action + "_false", "parameters": []},
+            {"value": sign_entry, "action": setter_action + "_true", "parameters": []},
+        ]
+        default_action = setter_action + "_false"
+        eval_table = Table(
+            table_name, actions, key, size, const_entries, default_action
+        )
+        gc.concat(eval_table.get_generated_code())
+
+        apply.writeln(
+            "{} = {} - {};".format(difference_variable, a["handle"], b["handle"])
+        )
+        apply.writeln("{}.apply();".format(table_name))
+        return gc
+
+    def execute(self, test_env):
+        test_env[self.target] = test_env[self.operand_a] < test_env[self.operand_b]
+
+
+class EqualTable(StrictComparator):
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t = self.env.get_varinfo(self.target)
+        a = self.env.get_varinfo(self.operand_a)
+        b = self.env.get_varinfo(self.operand_b)
+        declaration = gc.get_decl()
+        table_name = "eval_table_" + UID.get()
+        apply = gc.get_apply()
+        difference_variable = "difference_variable_" + UID.get()
+        setter_action = "setter_action_" + UID.get()
+        declaration.writeln(
+            "{} {};".format(a["type"].get_p4_type(), difference_variable)
+        )
+        for bool_val in ["true", "false"]:
+            declaration.writeln("action {}_{}() {{".format(setter_action, bool_val))
+            declaration.increase_indent()
+            declaration.writeln(
+                "{} = {};".format(t["handle"], 1 if bool_val == "true" else 0)
+            )
+            declaration.decrease_indent()
+            declaration.writeln("}")
+        actions = [setter_action + "_true", setter_action + "_false"]
+        key = [{"name": difference_variable, "match_type": "exact"}]
+        size = 1
+        const_entries = [
+            {"value": 0, "action": setter_action + "_true", "parameters": []}
+        ]
+        default_action = setter_action + "_false"
+        eval_table = Table(
+            table_name, actions, key, size, const_entries, default_action
+        )
+        gc.concat(eval_table.get_generated_code())
+
+        apply.writeln(
+            "{} = {} - {};".format(difference_variable, a["handle"], b["handle"])
+        )
+        apply.writeln("{}.apply();".format(table_name))
+        return gc
+
+    def execute(self, test_env):
+        test_env[self.target] = test_env[self.operand_a] == test_env[self.operand_b]
+
+
+class NotEqualTable(StrictComparator):
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t = self.env.get_varinfo(self.target)
+        a = self.env.get_varinfo(self.operand_a)
+        b = self.env.get_varinfo(self.operand_b)
+        declaration = gc.get_decl()
+        table_name = "eval_table_" + UID.get()
+        apply = gc.get_apply()
+        difference_variable = "difference_variable_" + UID.get()
+        setter_action = "setter_action_" + UID.get()
+        declaration.writeln(
+            "{} {};".format(a["type"].get_p4_type(), difference_variable)
+        )
+        for bool_val in ["true", "false"]:
+            declaration.writeln("action {}_{}() {{".format(setter_action, bool_val))
+            declaration.increase_indent()
+            declaration.writeln(
+                "{} = {};".format(t["handle"], 1 if bool_val == "true" else 0)
+            )
+            declaration.decrease_indent()
+            declaration.writeln("}")
+        actions = [setter_action + "_true", setter_action + "_false"]
+        key = [{"name": difference_variable, "match_type": "exact"}]
+        size = 1
+        const_entries = [
+            {"value": 0, "action": setter_action + "_false", "parameters": []}
+        ]
+        default_action = setter_action + "_true"
+        eval_table = Table(
+            table_name, actions, key, size, const_entries, default_action
+        )
+        gc.concat(eval_table.get_generated_code())
+
+        apply.writeln(
+            "{} = {} - {};".format(difference_variable, a["handle"], b["handle"])
+        )
+        apply.writeln("{}.apply();".format(table_name))
+        return gc
+
+    def execute(self, test_env):
+        test_env[self.target] = test_env[self.operand_a] != test_env[self.operand_b]
 
 
 class LessThan(StrictComparator):
