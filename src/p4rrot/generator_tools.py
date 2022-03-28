@@ -2,9 +2,9 @@
 # Useful classess and functions for code generation
 #
 
-from known_types import KnownType
+from p4rrot.known_types import KnownType
 from typing import Dict, List, Tuple
-from standard_fields import *
+from p4rrot.standard_fields import *
 
 
 class UID:

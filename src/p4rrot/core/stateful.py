@@ -1,8 +1,8 @@
 
-from known_types import KnownType
+from p4rrot.known_types import KnownType
 from typing import Dict, List, Tuple
-from standard_fields import *
-from generator_tools import *
+from p4rrot.standard_fields import *
+from p4rrot.generator_tools import *
 
 
 class SharedVariable(SharedElement):

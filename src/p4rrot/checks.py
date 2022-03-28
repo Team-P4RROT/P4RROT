@@ -1,4 +1,4 @@
-from generator_tools import *
+from p4rrot.generator_tools import *
 
 
 def var_exists(vname:str,env:Environment):
