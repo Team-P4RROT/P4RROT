@@ -5,7 +5,7 @@ function compare_code
 }
 
 sudo rm -r test.p4app
-cp -r ../../p4_template.p4app test.p4app
+cp -r ../../templates/p4_template.p4app test.p4app
 cp hook_pre_nfp_build.sh test.p4app/hook_pre_nfp_build.sh
 python3 codegen.py
 
