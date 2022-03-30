@@ -4,6 +4,8 @@ sys.path.append('../../src/')
 from p4rrot.generator_tools import *
 from p4rrot.known_types import *  
 from p4rrot.core.commands import *  
+from p4rrot.v1model.commands import *
+from p4rrot.v1model.stateful import *
     
 UID.reset()
 fp = FlowProcessor(

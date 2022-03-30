@@ -7,6 +7,9 @@ from p4rrot.standard_fields import *
 from p4rrot.generator_tools import *
 from p4rrot.core.commands import *
 from p4rrot.core.stateful import *
+from p4rrot.v1model.commands import *
+from p4rrot.v1model.stateful import *
+
 
 def test_assign_const():
     fp = FlowProcessor(
