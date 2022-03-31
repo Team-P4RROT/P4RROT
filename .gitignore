@@ -2,3 +2,6 @@ __pycache__/
 .pytest_cache
 dist/
 *.egg-info/
+.venv
+docs/build
+docs/source/generated
