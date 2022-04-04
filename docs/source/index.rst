@@ -28,6 +28,15 @@ We plan to add Tofino specific elements as well.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Getting Started:
+
+   getting_started/internal_workings.rst
+   getting_started/install_guide.rst
+   getting_started/hello_world.rst
+   getting_started/complex_example.rst
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Documentation:
 
    core/index
@@ -35,8 +44,21 @@ We plan to add Tofino specific elements as well.
    tofino/index
 
    api_summary
-   
 
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Extending P4RROT:
+
+   extending/command
+   extending/stateful
+   extending/template
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contributors:
+
+   contributors
 
 
 Indices and tables
