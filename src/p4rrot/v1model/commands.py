@@ -9,8 +9,20 @@ import random
 
 
 class AssignRandomValue(Command):
+    "Assign a random value to a variable."
     
-    def __init__(self,vname:str,min_value=0,max_value=1,env=None) -> None:
+    def __init__(self,vname:str,min_value=0,max_value=1,env=None):
+        """Assign an integer between *min_value* and *max_value* (inclusive) to the *vname* variable.
+
+        :param vname: name of th evariable
+        :type vname: str
+        :param min_value: lower bound, defaults to 0
+        :type min_value: int, optional
+        :param max_value: upper bound, defaults to 1
+        :type max_value: int, optional
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """        
         self.vname = vname
         self.min_value = min_value
         self.max_value = max_value

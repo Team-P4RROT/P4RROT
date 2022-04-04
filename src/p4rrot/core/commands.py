@@ -7,8 +7,21 @@ from p4rrot.checks import *
     
 
 class AssignConst(Command):
-    
+    '''
+    Assign the value of a literal to a variable.
+    '''
+
     def __init__(self,vname,value,env=None):
+        """Assign the value to a variable called *vname*.
+
+        :param vname: name of the variable
+        :type vname: str
+        :param value: (literal) value to be assigned
+        :type value: int
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """     
+        
         self.vname = vname
         self.value = value
         self.env = env
@@ -34,8 +47,18 @@ class AssignConst(Command):
 
 
 class Increment(Command):
+    "Increment a variable with a scalar value."
     
     def __init__(self,vname,value:int,env=None):
+        """Increment a variable with a scalar value.
+
+        :param vname: name of the variable
+        :type vname: str
+        :param value: scalar value to be added
+        :type value: int
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """        
         self.vname = vname
         self.value = value
         self.env = env
@@ -63,8 +86,18 @@ class Increment(Command):
 
 
 class Decrement(Command):
-    
+    "Decrement a variable with a scalar value."
+
     def __init__(self,vname,value:int,env=None):
+        """Decrement a variable with a scalar value.
+
+        :param vname: name of the variable
+        :type vname: str
+        :param value: scalar value to be substracted
+        :type value: int
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """        
         self.vname = vname
         self.value = value
         self.env = env
@@ -92,8 +125,19 @@ class Decrement(Command):
 
 
 class StrictAssignVar(Command):
-    
-    def __init__(self,target,source,env=None):
+    'Assign the value of one variable to an other with the same type.'
+
+    def __init__(self,target:str,source:str,env=None):
+        """Assign the value of the *source* variable to the variable called *target*. The two has to be the same type.
+
+        :param target: name of the target variable
+        :type target: str
+        :param source: name of the source variable
+        :type source: str
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """        
+   
         self.target = target
         self.source = source
         self.env = env
@@ -124,6 +168,17 @@ class StrictAssignVar(Command):
 class StrictTwoOperandCommand(Command):
     
     def __init__(self,target,operand_a,operand_b,env=None):
+        """The type of the operands and the target variable must have the same type.
+
+        :param target: the name of the variable where the result is stored
+        :type target: str
+        :param operand_a: variable name of the first operand
+        :type operand_a: str
+        :param operand_b: variable name of the second operand
+        :type operand_b: str
+        :param env:  containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """        
         self.target = target
         self.operand_a = operand_a
         self.operand_b = operand_b
@@ -161,6 +216,7 @@ class StrictNumericTwoOperandCommand(StrictTwoOperandCommand):
 
 
 class StrictAddition(StrictNumericTwoOperandCommand):
+    "Calculate the sume of two variables."
 
     def get_generated_code(self):
         gc = GeneratedCode()
@@ -176,6 +232,8 @@ class StrictAddition(StrictNumericTwoOperandCommand):
 
 
 class StrictSubtraction(StrictNumericTwoOperandCommand):
+    "Substracts one variable from another."
+
 
     def get_generated_code(self):
         gc = GeneratedCode()
@@ -311,8 +369,20 @@ class LogicalNot(Command):
 
 
 class If(Command):
+    "Starts an *If-Else* statement."
 
     def __init__(self,vname:str,env=None,then_block=None,else_block=None):
+        """Creating an *If-Else* statement. The *then* and *else* branches can be defined later or here as an optional parameter.
+
+        :param vname: name of the *bool_t* variable representing the condition.
+        :type vname: str
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        :param then_block: commands to be executed if the condition is true, defaults to None
+        :type then_block: Block, optional
+        :param else_block: commands to be executed if the condition is false, defaults to None
+        :type else_block: Block, optional
+        """        
         self.env = env
         self.vname = vname
         self.then_block = then_block
@@ -367,26 +437,43 @@ class If(Command):
 
 
 class ElseBlock(Block):
-    
+    "Representing the *else* branch of  an *If* statement."
+
     def __init__(self, env, parent_block):
         super().__init__(env)
         self.parent_block = parent_block
 
     def EndIf(self):
+        """Ending the *If* statement.
+
+        :return: The *Block*, where the *If* was instantieted. 
+        :rtype: Block
+        """ 
         return self.parent_block
 
 
 class ThenBlock(Block):
-    
+    "Representing the then *branch* of  an *If* statement."
+
     def __init__(self, env, parent_block, parent_if):
         super().__init__(env)
         self.parent_block = parent_block
         self.parent_if = parent_if
 
     def Else(self) -> ElseBlock:
+        """Ending the *then* block, and starting the *else* part.
+
+        :return: the else block to be populated
+        :rtype: ElseBlock
+        """        
         return self.parent_if.create_else_block(self.parent_block)
 
     def EndIf(self) -> Block:
+        """Ending the *If* statement.
+
+        :return: The *Block*, where the *If* was instantieted. 
+        :rtype: Block
+        """        
         return self.parent_block
 
 
@@ -659,8 +746,18 @@ class SetStandardField(Command):
 
 
 class CastVar(Command):
-    
-    def __init__(self,target,source,env=None):
+    'Assign the value of one variable to an other with a type-casting.'
+
+    def __init__(self,target:str,source:str,env=None):
+        """Assign the value of the *source* variable to the *target* variable where *target* is cast to the type of *source*.
+
+        :param target: name of the target variable
+        :type target: str
+        :param source: name of the source variable
+        :type source: str
+        :param env: containing the accessible variables, defaults to None
+        :type env: Environment, optional
+        """        
         self.target = target
         self.source = source
         self.env = env
