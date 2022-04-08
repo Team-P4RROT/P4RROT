@@ -1,5 +1,8 @@
-from generator_tools import *
-from known_types import *
+import sys
+sys.path.append('./src/')
+
+from p4rrot.generator_tools import *
+from p4rrot.known_types import *
 
 def test_uid():
     a = UID.get()

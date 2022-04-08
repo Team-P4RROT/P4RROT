@@ -2,7 +2,7 @@
 # Classes and constant objects representing standard fields like udp sourc port and destination ip.
 #
 
-from known_types import *
+from p4rrot.known_types import *
 
 class StandardField:
     

@@ -1,4 +1,7 @@
-from known_types import *
+import sys
+sys.path.append('./src/')
+
+from p4rrot.known_types import *
 
 
 def test_hdr_len():
