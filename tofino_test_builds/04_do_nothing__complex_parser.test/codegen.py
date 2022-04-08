@@ -1,4 +1,5 @@
 import sys
+<<<<<<< Updated upstream
 sys.path.append('../../')
 
 from generator_tools import *
@@ -6,13 +7,26 @@ from known_types import *
     
 UID.reset()
 fp = TofinoFlowProcessor(
+=======
+sys.path.append('../../src/')
+
+from p4rrot.generator_tools import *
+from p4rrot.known_types import *  
+    
+UID.reset()
+fp = FlowProcessor(
+>>>>>>> Stashed changes
         istruct=[('a',uint32_t),('b',uint32_t)],
         ostruct=[('s',uint32_t)],
         mstruct=[('t',uint32_t)],    
         method='RESPOND'
     )
 
+<<<<<<< Updated upstream
 fp2 = TofinoFlowProcessor(
+=======
+fp2 = FlowProcessor(
+>>>>>>> Stashed changes
         istruct=[('a',uint32_t),('b',uint32_t)],
         mstruct=[('t',uint32_t)],    
         method='READ'
