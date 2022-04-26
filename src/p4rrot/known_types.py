@@ -3,6 +3,7 @@
 #
 from typing import Dict, List, Tuple
 import ctypes
+from functools import lru_cache
 
 class KnownType:
     """
@@ -115,6 +116,27 @@ def padding_t(width:int):
 
     return hidden_padding_t    
 
+
+
+@lru_cache(maxsize=None)
+def string_t(width:int):
+    if width<=0:
+        raise ValueError('width must be positive')
+
+    class hidden_string_t(KnownType):
+        def get_p4_type() -> str:
+            return 'bit<{}>'.format(width*8) 
+
+        def get_size() -> int:
+            return width
+
+        def to_p4_literal(v: bytes):
+            return '0x'+v.hex()
+        
+        def cast_value(v: bytes):
+            return v[-width:]
+
+    return hidden_string_t
 
 
 def hdr_len(description: List[Tuple[str, KnownType]]):
