@@ -3,6 +3,7 @@ sys.path.append('../../src/')
 
 from p4rrot.generator_tools import *
 from p4rrot.known_types import *  
+from p4rrot.standard_fields import *
 from p4rrot.core.commands import *  
 
 
