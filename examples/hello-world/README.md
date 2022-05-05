@@ -11,7 +11,7 @@ What you need to have before starting: Python3, Docker, git, terminal emulator.
 First of all, we get a copy of P4RROT and this tutorial.
 
 ```console
-git clone https://github.com/gycsaba96/P4RROT
+git clone https://github.com/Team-P4RROT/P4RROT
 ```
 
 Now, let's switch to this example's directory.
