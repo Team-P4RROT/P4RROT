@@ -193,7 +193,6 @@ class SharedStack(SharedElement):
         gc.get_decl().writeln('register< {} >({}) {};'.format(self.vtype.get_p4_type(),self.capacity,self.vaname))
         gc.get_decl().writeln('register< {} >(1) {};'.format(uint32_t.get_p4_type(), self.index_name))
         gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.temp_name))
-        gc.get_apply().writeln('{}.write(0,0);'.format(self.index_name))
         return gc
 
     def get_repr(self):
@@ -218,8 +217,8 @@ class PopFromStack(Command):
         v = self.env.get_varinfo(self.value)
         s = self.env.get_varinfo(self.stack)
         gc.get_apply().writeln('{}.read({},0);'.format(self.index_name, self.temp_name))
-        gc.get_apply().writeln('{}.read({},{});'.format(s['handle'],v['handle'], self.temp_name))
         gc.get_apply().writeln('{} = {} - 1;'.format(self.temp_name, self.temp_name))
+        gc.get_apply().writeln('{}.read({},{});'.format(s['handle'],v['handle'], self.temp_name))
         gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
         return gc
 
@@ -246,8 +245,8 @@ class PushToStack(Command):
         s = self.env.get_varinfo(self.stack)
         v = self.env.get_varinfo(self.value)
         gc.get_apply().writeln('{}.read({},0);'.format(self.index_name, self.temp_name))
+        gc.get_apply().writeln('{}.write({},{});'.format(s['handle'],self.temp_name, v['handle']))
         gc.get_apply().writeln('{} = {} + 1;'.format(self.temp_name, self.temp_name))
-        gc.get_apply().writeln('{}.write({},{});'.format(s['handle'],v['handle'], self.temp_name))
         gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
         return gc
 
@@ -257,6 +256,122 @@ class PushToStack(Command):
         # if test_env[self.idx_vname]>=t['type'][2]:
         #     raise Exception('{}[{}] : Value {} is out of range 0..{}'.format(self.target),test_env[self.idx_vname],test_env[self.idx_vname],t['type'][2]-1)
         # test_env[self.target][test_env[self.idx_vname]] = test_env[self.source]
+
+
+class BloomFilter(SharedElement):
+
+    def __init__(self,vname:str,vtype:KnownType,capacity:int, number_of_hashes: int):
+        self.vaname = vname
+        self.reg_name = vname + '_register'
+        self.index_name = self.reg_name + '_idx'
+        self.temp_name = self.reg_name + "_temp"
+        self.vtype = vtype
+        self.capacity = capacity
+        
+        self.value_check = self.vaname + '_value_check'
+        self.hash_name = self.vaname + '_hash'
+        self.salt_name = self.vaname + '_salt'
+        self.hashres_name = self.vaname + '_result'
+        self.properties = {'capacity': capacity, 'number_of_hashes': number_of_hashes}
+
+    def get_properties(self):
+        return self.properties
+
+    def get_name(self):
+        return self.vaname
+
+    def get_type(self):
+        return (SharedStack,self.vtype,self.capacity)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_decl().writeln('#pragma netro reglocked register')
+        gc.get_decl().writeln('register< bit<1> >({}) {};'.format(self.capacity, self.reg_name))
+        # gc.get_decl().writeln('register< {} >(1) {};'.format(uint32_t.get_p4_type(), self.index_name))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.value_check))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.index_name))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.temp_name))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.hash_name))
+        gc.get_decl().writeln('bit<1> {};'.format(self.hashres_name))
+        return gc
+
+    def get_repr(self):
+        return [None]*self.capacity
+
+class MaybeContains(Command):
+    
+    def __init__(self,result: str, bloom_filter:str,value:str,env=None):
+        self.bloom_filter = bloom_filter
+        self.value = value
+        self.value_check = self.bloom_filter + '_value_check'
+        self.reg_name = self.bloom_filter + '_register'
+        self.index_name = self.bloom_filter + '_idx'
+        self.temp_name = self.bloom_filter + '_temp'
+        self.hash_name = self.bloom_filter + '_hash'
+        self.salt_name = self.bloom_filter + '_salt'
+        self.hashres_name = self.bloom_filter + '_result'
+        self.env = env
+        self.result_var_name = result
+        if env!=None:
+            self.check()
+
+    def check(self):
+        True
+        
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        properties = (self.env.get_varinfo(self.bloom_filter))['properties']
+        val_to_check = self.env.get_varinfo(self.value)
+        self.result = self.env.get_varinfo(self.result_var_name)['handle']
+        # start with True
+        gc.get_apply().writeln('{} = {};'.format(self.result, '(bit<8>)1'))         
+
+        for i in range(properties['number_of_hashes']):
+            gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, '.format(self.hash_name) + '{' + \
+                '{}, (bit<8>) {}'.format(val_to_check['handle'], str(i)) + '}, (bit<32>)' +  '{});'.format(str(properties['capacity'])))
+        # uid.get()
+            gc.get_apply().writeln('{}.read({}, {});'.format(self.reg_name, self.hashres_name, self.hash_name))
+            gc.get_apply().writeln('if ({} != 1)'.format(self.hashres_name) + '{')
+            gc.get_apply().increase_indent()
+            gc.get_apply().writeln( '{} = (bit<8>) 0;'.format(self.result))
+            gc.get_apply().decrease_indent()
+            gc.get_apply().writeln('};')
+
+        return gc
+
+    def execute(self,test_env):
+        s = self.env.get_varinfo(self.value)
+
+class PutIntoBloom(Command):
+    
+    def __init__(self, bloom_filter:str,value:str,env=None):
+        self.bloom_filter = bloom_filter
+        self.value = value
+        self.reg_name = self.bloom_filter + '_register'
+        self.hash_name = self.bloom_filter + '_hash'
+        self.env = env
+        if env!=None:
+            self.check()
+
+    def check(self):
+        True
+        
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        properties = (self.env.get_varinfo(self.bloom_filter))['properties']
+        val_to_check = self.env.get_varinfo(self.value)
+        bloom_filter_var = self.env.get_varinfo(self.bloom_filter)        
+
+        for i in range(properties['number_of_hashes']):
+            gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, '.format(self.hash_name) + '{' + \
+                '{}, (bit<8>) {}'.format(val_to_check['handle'], str(i)) + '}, (bit<32>)' + '{});'.format(properties['capacity']))
+            gc.get_apply().writeln('{}.write({}, (bit<1>) 1);'.format(self.reg_name, self.hash_name))
+
+        return gc
+
+    def execute(self,test_env):
+        s = self.env.get_varinfo(self.value)
+
 
 
 class Const(SharedElement):

@@ -237,7 +237,8 @@ class SharedElement:
     def get_generated_code(self):
         raise NotImplementedError()    
     
-    
+    def get_properties(self):
+        return {}
 
 class FlowProcessor:
     '''
@@ -483,7 +484,7 @@ class Environment:
             for s in state:
                 if s.get_name() in self.info:
                     raise Exception('name "{}" is not unique'.format(n))            
-                self.info[s.get_name()] = { 'name':s.get_name(), 'type':s.get_type(), 'place': 'state', 'handle':s.get_name() }
+                self.info[s.get_name()] = { 'name':s.get_name(), 'type':s.get_type(), 'place': 'state', 'handle':s.get_name(), 'properties': s.get_properties() }
 
 
     def get_varinfo(self,vname:str):
