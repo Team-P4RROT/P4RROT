@@ -169,3 +169,114 @@ class WriteToSharedAt(Command):
         if test_env[self.idx_vname]>=t['type'][2]:
             raise Exception('{}[{}] : Value {} is out of range 0..{}'.format(self.target),test_env[self.idx_vname],test_env[self.idx_vname],t['type'][2]-1)
         test_env[self.target][test_env[self.idx_vname]] = test_env[self.source]
+
+
+class SharedStack(SharedElement):
+
+    def __init__(self,vname:str,vtype:KnownType,capacity:int):
+        self.vaname = vname
+        self.index_name = self.vaname + '_idx'
+        self.temp_name = self.vaname + "_temp"
+        self.vtype = vtype
+        self.capacity = capacity
+        self.current_size = 0
+
+    def get_name(self):
+        return self.vaname
+
+    def get_type(self):
+        return (SharedStack,self.vtype,self.capacity)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_decl().writeln('#pragma netro reglocked register')
+        gc.get_decl().writeln('register< {} >({}) {};'.format(self.vtype.get_p4_type(),self.capacity,self.vaname))
+        gc.get_decl().writeln('register< {} >(1) {};'.format(uint32_t.get_p4_type(), self.index_name))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.temp_name))
+        gc.get_apply().writeln('{}.write(0,0);'.format(self.index_name))
+        return gc
+
+    def get_repr(self):
+        return [None]*self.capacity
+
+
+class PopFromStack(Command):
+    def __init__(self,stack:str,value:str,env=None):
+        self.stack = stack
+        self.value = value
+        self.index_name = self.stack + '_idx'
+        self.temp_name = self.stack + '_temp'
+        self.env = env
+        if env!=None:
+            self.check()
+
+    def check(self):
+        True
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        v = self.env.get_varinfo(self.value)
+        s = self.env.get_varinfo(self.stack)
+        gc.get_apply().writeln('{}.read({},0);'.format(self.index_name, self.temp_name))
+        gc.get_apply().writeln('{}.read({},{});'.format(s['handle'],v['handle'], self.temp_name))
+        gc.get_apply().writeln('{} = {} - 1;'.format(self.temp_name, self.temp_name))
+        gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
+        return gc
+
+    def execute(self,test_env):
+        s = self.env.get_varinfo(self.value)
+
+
+class PushToStack(Command):
+
+    def __init__(self,stack:str,value:str,env=None):
+        self.stack = stack
+        self.value = value
+        self.index_name = self.stack + '_idx'
+        self.temp_name = self.stack + '_temp'
+        self.env = env
+        if env!=None:
+            self.check()
+
+    def check(self):
+       True
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        s = self.env.get_varinfo(self.stack)
+        v = self.env.get_varinfo(self.value)
+        gc.get_apply().writeln('{}.read({},0);'.format(self.index_name, self.temp_name))
+        gc.get_apply().writeln('{} = {} + 1;'.format(self.temp_name, self.temp_name))
+        gc.get_apply().writeln('{}.write({},{});'.format(s['handle'],v['handle'], self.temp_name))
+        gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
+        return gc
+
+    def execute(self,test_env):
+        return
+        # t = self.env.get_varinfo(self.target)
+        # if test_env[self.idx_vname]>=t['type'][2]:
+        #     raise Exception('{}[{}] : Value {} is out of range 0..{}'.format(self.target),test_env[self.idx_vname],test_env[self.idx_vname],t['type'][2]-1)
+        # test_env[self.target][test_env[self.idx_vname]] = test_env[self.source]
+
+
+class Const(SharedElement):
+    def __init__(self,vname:str,vtype:KnownType,value):
+        self.vaname = vname
+        self.vtype = vtype
+        self.value = value
+
+    def get_name(self):
+        return self.vaname
+
+    def get_type(self):
+        return self.vtype
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_headers().writeln('const {} {} = {};'.format(self.vtype.get_p4_type(),
+                                                         self.vaname,
+                                                         self.vtype.to_p4_literal(self.value)))
+        return gc
+
+    def get_repr(self):
+        return self.vtype.cast_value(self.value)
