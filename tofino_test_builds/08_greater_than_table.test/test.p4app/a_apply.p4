@@ -1,8 +1,8 @@
 if (hdr.genhdr_uid1.isValid()){
 	#define OUTPUT_HEADER_SIZE 9
 	hdr.genhdr_uid1.x = 1;
-	generated_variable_0 = hdr.genhdr_uid1.a - hdr.genhdr_uid1.b;
-	generated_table_0.apply();
+	difference_variable_uid3 = hdr.genhdr_uid1.a - hdr.genhdr_uid1.b;
+	eval_table_uid2.apply();
 	if (hdr.genhdr_uid1.x==1){
 		hdr.genhdr_uid1.a = hdr.genhdr_uid1.a + 5;
 	}

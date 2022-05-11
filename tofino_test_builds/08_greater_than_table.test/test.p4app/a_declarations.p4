@@ -1,22 +1,22 @@
-bit<32> generated_variable_0;
-action generated_setter_action_0_true() {
+bit<32> difference_variable_uid3;
+action setter_action_uid4_true() {
 	hdr.genhdr_uid1.x = 1;
 }
-action generated_setter_action_0_false() {
+action setter_action_uid4_false() {
 	hdr.genhdr_uid1.x = 0;
 }
-table generated_table_0 {
+table eval_table_uid2 {
 	actions = {
-	generated_setter_action_0_true;
-	generated_setter_action_0_false;
+	setter_action_uid4_true;
+	setter_action_uid4_false;
 	}
 	key = {
-		generated_variable_0: ternary;
+		difference_variable_uid3: ternary;
 	}
 	size = 2;
-	const default_action = generated_setter_action_0_true;
+	const default_action = setter_action_uid4_true;
 	const entries = {
-		0b00000000000000000000000000000000&&&0b11111111111111111111111111111111 : generated_setter_action_0_false();
-		0b00000000000000000000000000000000&&&0b10000000000000000000000000000000 : generated_setter_action_0_false();
+		0b00000000000000000000000000000000&&&0b11111111111111111111111111111111 : setter_action_uid4_false();
+		0b00000000000000000000000000000000&&&0b10000000000000000000000000000000 : setter_action_uid4_false();
 	}
 }
