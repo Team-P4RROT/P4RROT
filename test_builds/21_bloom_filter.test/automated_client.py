@@ -1,7 +1,8 @@
 import socket
 import struct
+import sys
 
-server_addr = ('10.0.0.1',5555)
+server_addr = (sys.argv[1],5555)
 s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 
 for i in range(0, 1000, 2):

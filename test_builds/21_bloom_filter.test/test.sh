@@ -1,11 +1,11 @@
-
+#!/bin/bash
 function compare_code
 {
-    diff -E -Z -b -w -B $1 ../$1 
+    diff -E -b -w -B $1 ../$1 
 }
 
 sudo rm -r test.p4app
-cp -r ../../p4_template.p4app test.p4app
+cp -r ../../templates/p4_template.p4app test.p4app
 python3 codegen.py
 
 cp client.py test.p4app/

@@ -1,11 +1,10 @@
 import sys
-sys.path.append('../../')
-from stateful import Const, BloomFilter, MaybeContains, PutIntoBloom
+sys.path.append('../../src/')
+from p4rrot.v1model.stateful import Const, BloomFilter, MaybeContains, PutIntoBloom
 
-
-from generator_tools import *
-from known_types import *  
-from commands import *  
+from p4rrot.generator_tools import *
+from p4rrot.known_types import *
+from p4rrot.core.commands import *
     
 UID.reset()
 fp = FlowProcessor(

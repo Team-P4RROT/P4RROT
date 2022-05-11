@@ -1,7 +1,8 @@
 import socket
 import struct
+import sys
 
-server_addr = ('192.168.11.1',5555)
+server_addr = (sys.argv[1],5555)
 s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
 
 while True:
