@@ -1,7 +1,7 @@
 
 function compare_code
 {
-    diff -E -Z -b -w -B $1 ../$1 
+    diff -E -Z -b -w -B $1 ../$1
 }
 
 sudo rm -r test.p4app

@@ -171,12 +171,13 @@ class WriteToSharedAt(Command):
         test_env[self.target][test_env[self.idx_vname]] = test_env[self.source]
 
 
+# A stack storing a given type of element with a fixed maximum capacity
 class SharedStack(SharedElement):
 
     def __init__(self,vname:str,vtype:KnownType,capacity:int):
         self.vaname = vname
-        self.index_name = self.vaname + '_idx'
-        self.temp_name = self.vaname + "_temp"
+        self.index_name = '_' + self.vaname + '_idx'
+        self.temp_name = '_'+ self.vaname + "_temp"
         self.vtype = vtype
         self.capacity = capacity
         self.current_size = 0
@@ -199,12 +200,14 @@ class SharedStack(SharedElement):
         return [None]*self.capacity
 
 
+# Pops an element from a SharedStack, putting its value to the variable specified in the value parameter
 class PopFromStack(Command):
+
     def __init__(self,stack:str,value:str,env=None):
         self.stack = stack
         self.value = value
-        self.index_name = self.stack + '_idx'
-        self.temp_name = self.stack + '_temp'
+        self.index_name = '_' + self.stack + '_idx'
+        self.temp_name = '_' + self.stack + '_temp'
         self.env = env
         if env!=None:
             self.check()
@@ -223,16 +226,17 @@ class PopFromStack(Command):
         return gc
 
     def execute(self,test_env):
-        s = self.env.get_varinfo(self.value)
+        return
 
 
+# Adds an element on top of a SharedStack
 class PushToStack(Command):
 
     def __init__(self,stack:str,value:str,env=None):
         self.stack = stack
         self.value = value
-        self.index_name = self.stack + '_idx'
-        self.temp_name = self.stack + '_temp'
+        self.index_name = '_' + self.stack + '_idx'
+        self.temp_name = '_' + self.stack + '_temp'
         self.env = env
         if env!=None:
             self.check()
@@ -252,26 +256,27 @@ class PushToStack(Command):
 
     def execute(self,test_env):
         return
-        # t = self.env.get_varinfo(self.target)
-        # if test_env[self.idx_vname]>=t['type'][2]:
-        #     raise Exception('{}[{}] : Value {} is out of range 0..{}'.format(self.target),test_env[self.idx_vname],test_env[self.idx_vname],t['type'][2]-1)
-        # test_env[self.target][test_env[self.idx_vname]] = test_env[self.source]
 
 
+# A Bloom filter is a probabilistic data structure.
+# False positive matches are possible, but false negatives are not.
+# Elements can be added to the set, but not removed.
+# This implementation uses the crc16 hash algorithm with a salt. You can specify in the parameter how many hashes to use.
+# The bits are stored in a register, whose size can be specified in the capacity parameter.
 class BloomFilter(SharedElement):
 
     def __init__(self,vname:str,vtype:KnownType,capacity:int, number_of_hashes: int):
         self.vaname = vname
-        self.reg_name = vname + '_register'
-        self.index_name = self.reg_name + '_idx'
-        self.temp_name = self.reg_name + "_temp"
+        self.reg_name = '_' + vname + '_register'
+        self.index_name = '_' + self.reg_name + '_idx'
+        self.temp_name = '_' + self.reg_name + "_temp"
         self.vtype = vtype
         self.capacity = capacity
         
-        self.value_check = self.vaname + '_value_check'
-        self.hash_name = self.vaname + '_hash'
-        self.salt_name = self.vaname + '_salt'
-        self.hashres_name = self.vaname + '_result'
+        self.value_check = '_' + self.vaname + '_value_check'
+        self.hash_name = '_' + self.vaname + '_hash'
+        self.salt_name = '_' + self.vaname + '_salt'
+        self.hashres_name = '_' + self.vaname + '_result'
         self.properties = {'capacity': capacity, 'number_of_hashes': number_of_hashes}
 
     def get_properties(self):
@@ -287,7 +292,6 @@ class BloomFilter(SharedElement):
         gc = GeneratedCode()
         gc.get_decl().writeln('#pragma netro reglocked register')
         gc.get_decl().writeln('register< bit<1> >({}) {};'.format(self.capacity, self.reg_name))
-        # gc.get_decl().writeln('register< {} >(1) {};'.format(uint32_t.get_p4_type(), self.index_name))
         gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.value_check))
         gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.index_name))
         gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.temp_name))
@@ -298,18 +302,20 @@ class BloomFilter(SharedElement):
     def get_repr(self):
         return [None]*self.capacity
 
+# Checks whether a value (of a variable) is possibly in the bloom filter.
+# May return true even when the element is not in it (false positive) but never returns false for an element it contains.
 class MaybeContains(Command):
     
     def __init__(self,result: str, bloom_filter:str,value:str,env=None):
         self.bloom_filter = bloom_filter
         self.value = value
-        self.value_check = self.bloom_filter + '_value_check'
-        self.reg_name = self.bloom_filter + '_register'
-        self.index_name = self.bloom_filter + '_idx'
-        self.temp_name = self.bloom_filter + '_temp'
-        self.hash_name = self.bloom_filter + '_hash'
-        self.salt_name = self.bloom_filter + '_salt'
-        self.hashres_name = self.bloom_filter + '_result'
+        self.value_check = '_' + self.bloom_filter + '_value_check'
+        self.reg_name = '_' + self.bloom_filter + '_register'
+        self.index_name = '_' + self.bloom_filter + '_idx'
+        self.temp_name = '_' + self.bloom_filter + '_temp'
+        self.hash_name = '_' + self.bloom_filter + '_hash'
+        self.salt_name = '_' + self.bloom_filter + '_salt'
+        self.hashres_name = '_' + self.bloom_filter + '_result'
         self.env = env
         self.result_var_name = result
         if env!=None:
@@ -329,7 +335,6 @@ class MaybeContains(Command):
         for i in range(properties['number_of_hashes']):
             gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, '.format(self.hash_name) + '{' + \
                 '{}, (bit<8>) {}'.format(val_to_check['handle'], str(i)) + '}, (bit<32>)' +  '{});'.format(str(properties['capacity'])))
-        # uid.get()
             gc.get_apply().writeln('{}.read({}, {});'.format(self.reg_name, self.hashres_name, self.hash_name))
             gc.get_apply().writeln('if ({} != 1)'.format(self.hashres_name) + '{')
             gc.get_apply().increase_indent()
@@ -340,15 +345,16 @@ class MaybeContains(Command):
         return gc
 
     def execute(self,test_env):
-        s = self.env.get_varinfo(self.value)
+        return
 
+# Puts a new element into the bloom filter.
 class PutIntoBloom(Command):
     
     def __init__(self, bloom_filter:str,value:str,env=None):
         self.bloom_filter = bloom_filter
         self.value = value
-        self.reg_name = self.bloom_filter + '_register'
-        self.hash_name = self.bloom_filter + '_hash'
+        self.reg_name = '_' + self.bloom_filter + '_register'
+        self.hash_name = '_' + self.bloom_filter + '_hash'
         self.env = env
         if env!=None:
             self.check()
@@ -360,7 +366,6 @@ class PutIntoBloom(Command):
         gc = GeneratedCode()
         properties = (self.env.get_varinfo(self.bloom_filter))['properties']
         val_to_check = self.env.get_varinfo(self.value)
-        bloom_filter_var = self.env.get_varinfo(self.bloom_filter)        
 
         for i in range(properties['number_of_hashes']):
             gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, '.format(self.hash_name) + '{' + \
@@ -370,7 +375,7 @@ class PutIntoBloom(Command):
         return gc
 
     def execute(self,test_env):
-        s = self.env.get_varinfo(self.value)
+        return
 
 
 
