@@ -196,9 +196,6 @@ class SharedStack(SharedElement):
         gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.temp_name))
         return gc
 
-    def get_repr(self):
-        return [None]*self.capacity
-
 
 # Pops an element from a SharedStack, putting its value to the variable specified in the value parameter
 class PopFromStack(Command):
@@ -225,8 +222,6 @@ class PopFromStack(Command):
         gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
         return gc
 
-    def execute(self,test_env):
-        return
 
 
 # Adds an element on top of a SharedStack
@@ -253,9 +248,6 @@ class PushToStack(Command):
         gc.get_apply().writeln('{} = {} + 1;'.format(self.temp_name, self.temp_name))
         gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
         return gc
-
-    def execute(self,test_env):
-        return
 
 
 # A Bloom filter is a probabilistic data structure.
@@ -299,8 +291,6 @@ class BloomFilter(SharedElement):
         gc.get_decl().writeln('bit<1> {};'.format(self.hashres_name))
         return gc
 
-    def get_repr(self):
-        return [None]*self.capacity
 
 # Checks whether a value (of a variable) is possibly in the bloom filter.
 # May return true even when the element is not in it (false positive) but never returns false for an element it contains.
@@ -344,8 +334,6 @@ class MaybeContains(Command):
 
         return gc
 
-    def execute(self,test_env):
-        return
 
 # Puts a new element into the bloom filter.
 class PutIntoBloom(Command):
@@ -373,30 +361,3 @@ class PutIntoBloom(Command):
             gc.get_apply().writeln('{}.write({}, (bit<1>) 1);'.format(self.reg_name, self.hash_name))
 
         return gc
-
-    def execute(self,test_env):
-        return
-
-
-
-class Const(SharedElement):
-    def __init__(self,vname:str,vtype:KnownType,value):
-        self.vaname = vname
-        self.vtype = vtype
-        self.value = value
-
-    def get_name(self):
-        return self.vaname
-
-    def get_type(self):
-        return self.vtype
-
-    def get_generated_code(self):
-        gc = GeneratedCode()
-        gc.get_headers().writeln('const {} {} = {};'.format(self.vtype.get_p4_type(),
-                                                         self.vaname,
-                                                         self.vtype.to_p4_literal(self.value)))
-        return gc
-
-    def get_repr(self):
-        return self.vtype.cast_value(self.value)
