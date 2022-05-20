@@ -3,3 +3,6 @@ __pycache__/
 dist/
 *.egg-info/
 .vscode
+.coverage
+.mypy_cache
+.tox
