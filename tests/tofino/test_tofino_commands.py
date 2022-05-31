@@ -247,3 +247,196 @@ def test_read_shared_array_check():
         "shared_a_1", uint32_t, uint16_t, 3, read_to="b", env=env
     )
     read_shared_arr.check()
+
+
+def test_greater_than_table_code_generation():
+    UID.reset()
+    env = Environment(
+        [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        None,
+    )
+    table = GreaterThanTable("t", "a", "b", env)
+    gc = table.get_generated_code()
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    expected_decl = [
+        "bit<32> difference_variable_uid2;",
+        "action setter_action_uid3_true() {",
+        "\thdr.inp.t = 1;",
+        "}",
+        "action setter_action_uid3_false() {",
+        "\thdr.inp.t = 0;",
+        "}",
+        "table eval_table_uid1 {",
+        "\tkey = {",
+        "\t\tdifference_variable_uid2: ternary;",
+        "\t}",
+        "\tactions = {",
+        "\t\tsetter_action_uid3_true;",
+        "\t\tsetter_action_uid3_false;",
+        "\t}",
+        "\tsize = 2;",
+        "\tconst default_action = setter_action_uid3_true;",
+        "\tconst entries = {",
+        "\t\t0b00000000000000000000000000000000&&&0b11111111111111111111111111111111 : setter_action_uid3_false();",
+        "\t\t0b00000000000000000000000000000000&&&0b10000000000000000000000000000000 : setter_action_uid3_false();",
+        "\t}",
+        "}",
+    ]
+    expected_apply = [
+        "difference_variable_uid2 = hdr.inp.a - hdr.inp.b;",
+        "eval_table_uid1.apply();",
+    ]
+    assert generated_decl == expected_decl
+    assert generated_apply == expected_apply
+
+
+def test_smaller_than_table_code_generation():
+    UID.reset()
+    env = Environment(
+        [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        None,
+    )
+    table = SmallerThanTable("t", "a", "b", env)
+    gc = table.get_generated_code()
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    expected_decl = [
+        "bit<32> difference_variable_uid2;",
+        "action setter_action_uid3_true() {",
+        "\thdr.inp.t = 1;",
+        "}",
+        "action setter_action_uid3_false() {",
+        "\thdr.inp.t = 0;",
+        "}",
+        "table eval_table_uid1 {",
+        "\tkey = {",
+        "\t\tdifference_variable_uid2: ternary;",
+        "\t}",
+        "\tactions = {",
+        "\t\tsetter_action_uid3_true;",
+        "\t\tsetter_action_uid3_false;",
+        "\t}",
+        "\tsize = 2;",
+        "\tconst default_action = setter_action_uid3_false;",
+        "\tconst entries = {",
+        "\t\t0b00000000000000000000000000000000&&&0b11111111111111111111111111111111 : setter_action_uid3_false();",
+        "\t\t0b10000000000000000000000000000000&&&0b10000000000000000000000000000000 : setter_action_uid3_true();",
+        "\t}",
+        "}",
+    ]
+    expected_apply = [
+        "difference_variable_uid2 = hdr.inp.a - hdr.inp.b;",
+        "eval_table_uid1.apply();",
+    ]
+
+    assert generated_decl == expected_decl
+    assert generated_apply == expected_apply
+
+
+def test_equal_table_code_generation():
+    UID.reset()
+    env = Environment(
+        [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        None,
+    )
+    table = EqualTable("t", "a", "b", env)
+    gc = table.get_generated_code()
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    expected_decl = [
+        "bit<32> difference_variable_uid2;",
+        "action setter_action_uid3_true() {",
+        "\thdr.inp.t = 1;",
+        "}",
+        "action setter_action_uid3_false() {",
+        "\thdr.inp.t = 0;",
+        "}",
+        "table eval_table_uid1 {",
+        "\tkey = {",
+        "\t\tdifference_variable_uid2: exact;",
+        "\t}",
+        "\tactions = {",
+        "\t\tsetter_action_uid3_true;",
+        "\t\tsetter_action_uid3_false;",
+        "\t}",
+        "\tsize = 1;",
+        "\tconst default_action = setter_action_uid3_false;",
+        "\tconst entries = {",
+        "\t\t0 : setter_action_uid3_true();",
+        "\t}",
+        "}",
+    ]
+    expected_apply = [
+        "difference_variable_uid2 = hdr.inp.a - hdr.inp.b;",
+        "eval_table_uid1.apply();",
+    ]
+
+    assert generated_decl == expected_decl
+    assert generated_apply == expected_apply
+
+
+def test_not_equal_table_code_generation():
+    UID.reset()
+    env = Environment(
+        [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        None,
+    )
+    table = NotEqualTable("t", "a", "b", env)
+    gc = table.get_generated_code()
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    expected_decl = [
+        "bit<32> difference_variable_uid2;",
+        "action setter_action_uid3_true() {",
+        "\thdr.inp.t = 1;",
+        "}",
+        "action setter_action_uid3_false() {",
+        "\thdr.inp.t = 0;",
+        "}",
+        "table eval_table_uid1 {",
+        "\tkey = {",
+        "\t\tdifference_variable_uid2: exact;",
+        "\t}",
+        "\tactions = {",
+        "\t\tsetter_action_uid3_true;",
+        "\t\tsetter_action_uid3_false;",
+        "\t}",
+        "\tsize = 1;",
+        "\tconst default_action = setter_action_uid3_true;",
+        "\tconst entries = {",
+        "\t\t0 : setter_action_uid3_false();",
+        "\t}",
+        "}",
+    ]
+    expected_apply = [
+        "difference_variable_uid2 = hdr.inp.a - hdr.inp.b;",
+        "eval_table_uid1.apply();",
+    ]
+
+    assert generated_decl == expected_decl
+    assert generated_apply == expected_apply
