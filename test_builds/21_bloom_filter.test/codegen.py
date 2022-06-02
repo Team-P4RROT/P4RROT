@@ -1,6 +1,7 @@
 import sys
 sys.path.append('../../src/')
-from p4rrot.v1model.stateful import Const, BloomFilter, MaybeContains, PutIntoBloom
+from p4rrot.core.stateful import Const
+from p4rrot.v1model.stateful import BloomFilter, MaybeContains, PutIntoBloom
 
 from p4rrot.generator_tools import *
 from p4rrot.known_types import *
