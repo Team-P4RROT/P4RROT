@@ -440,3 +440,20 @@ def test_not_equal_table_code_generation():
 
     assert generated_decl == expected_decl
     assert generated_apply == expected_apply
+
+
+def test_assign_with_hash():
+    env = Environment(
+        [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        None,
+    )
+    gc = AssignWithHash('a','b',env).get_generated_code()
+    generated_line = gc.get_apply().get_code()
+    expected_line = "@in_hash{ hdr.inp.a = hdr.inp.b; }\n"
+    assert generated_line == expected_line

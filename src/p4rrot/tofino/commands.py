@@ -433,3 +433,12 @@ class NotEqualTable(StrictComparator):
 
     def execute(self, test_env):
         test_env[self.target] = test_env[self.operand_a] != test_env[self.operand_b]
+
+class AssignWithHash(StrictAssignVar):
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        s  = self.env.get_varinfo(self.source)
+        t  = self.env.get_varinfo(self.target)
+        gc.get_apply().writeln('@in_hash{{ {} = {}; }}'.format(t['handle'],s['handle']))
+        return gc
