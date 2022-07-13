@@ -159,7 +159,7 @@ def test_increment_shared_array_code_generation():
 
 
 def test_increment_shared_array_check():
-    env = Environment([("a", uint32_t)], [], [], [], "inp", "out", "met", None)
+    env = Environment([("a", uint32_t)], [], [], [], [], "inp", "out", "met", None)
     increment_shared_arr = IncrementSharedArray(
         "shared_a_1", uint32_t, uint16_t, 3, read_new_to="a", env=env
     )
@@ -185,7 +185,7 @@ def test_decrement_shared_array_code_generation():
 
 
 def test_decrement_shared_array_check():
-    env = Environment([("a", uint32_t)], [], [], [], "inp", "out", "met", None)
+    env = Environment([("a", uint32_t)], [], [], [], [], "inp", "out", "met", None)
     decrement_shared_arr = DecrementSharedArray(
         "shared_a_1", uint32_t, uint16_t, 3, read_new_to="a", env=env
     )
@@ -194,7 +194,7 @@ def test_decrement_shared_array_check():
 
 def test_write_shared_array_code_generation():
     UID.reset()
-    env = Environment([("a", uint32_t)], [], [], [], "inp", "out", "met", None)
+    env = Environment([("a", uint32_t)], [], [], [], [], "inp", "out", "met", None)
     write_shared_arr = WriteSharedArray(
         "shared_a_2", uint32_t, uint16_t, 3, 100, "a", env
     )
@@ -215,7 +215,7 @@ def test_write_shared_array_code_generation():
 
 
 def test_write_shared_array_check():
-    env = Environment([("b", uint32_t)], [], [], [], "inp", "out", "met", None)
+    env = Environment([("b", uint32_t)], [], [], [], [], "inp", "out", "met", None)
     write_shared_arr = WriteSharedArray(
         "shared_a_1", uint32_t, uint16_t, 3, 100, read_old_to="b", env=env
     )
@@ -224,7 +224,7 @@ def test_write_shared_array_check():
 
 def test_read_shared_array_code_generation():
     UID.reset()
-    env = Environment([("a", uint32_t)], [], [], [], "inp", "out", "met", None)
+    env = Environment([("a", uint32_t)], [], [], [], [], "inp", "out", "met", None)
     read_shared_arr = ReadSharedArray("shared_a_2", uint32_t, uint16_t, 3, "a", env)
     gc = read_shared_arr.get_generated_code()
     generated_decl = gc.get_decl().get_code().strip().split("\n")
@@ -242,7 +242,7 @@ def test_read_shared_array_code_generation():
 
 
 def test_read_shared_array_check():
-    env = Environment([("b", uint32_t)], [], [], [], "inp", "out", "met", None)
+    env = Environment([("b", uint32_t)], [], [], [], [], "inp", "out", "met", None)
     read_shared_arr = ReadSharedArray(
         "shared_a_1", uint32_t, uint16_t, 3, read_to="b", env=env
     )
@@ -253,6 +253,7 @@ def test_greater_than_table_code_generation():
     UID.reset()
     env = Environment(
         [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
         [],
         [],
         [],
@@ -301,6 +302,7 @@ def test_smaller_than_table_code_generation():
     UID.reset()
     env = Environment(
         [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
         [],
         [],
         [],
@@ -353,6 +355,7 @@ def test_equal_table_code_generation():
         [],
         [],
         [],
+        [],
         "inp",
         "out",
         "met",
@@ -398,6 +401,7 @@ def test_not_equal_table_code_generation():
     UID.reset()
     env = Environment(
         [("a", uint32_t), ("b", uint32_t), ("t", bool_t)],
+        [],
         [],
         [],
         [],
@@ -448,12 +452,120 @@ def test_assign_with_hash():
         [],
         [],
         [],
+        [],
         "inp",
         "out",
         "met",
         None,
     )
-    gc = AssignWithHash('a','b',env).get_generated_code()
+    gc = AssignWithHash("a", "b", env).get_generated_code()
     generated_line = gc.get_apply().get_code()
     expected_line = "@in_hash{ hdr.inp.a = hdr.inp.b; }\n"
     assert generated_line == expected_line
+
+
+def test_Digest():
+    UID.reset()
+    env = Environment(
+        [],
+        [],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        [SrcIp, UdpDstPort, UdpSrcPort],
+        None,
+    )
+    digest = Digest(["hdr.ipv4.src", "hdr.udp.srcPort"], ["hdr.udp.dstPort"], env)
+    gc = digest.get_generated_code()
+    generated_deparser_decl = (
+        gc.get_or_create("ingress_deparser_declaration").get_code().strip().split("\n")
+    )
+    generated_headers = gc.get_headers().get_code().strip().split("\n")
+    generated_deparser_apply = (
+        gc.get_or_create("ingress_deparser_apply").get_code().strip().split("\n")
+    )
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    expected_deparser_decl = ["Digest<generated_digest_uid4>() generated_digest_uid4;"]
+    expected_headers = [
+        "struct generated_digest_uid4{",
+        "\tbit<32> src_uid2;",
+        "\tbit<16> srcPort_uid3;",
+        "}",
+    ]
+    expected_deparser_apply = [
+        "if (ig_dprsr_md.digest_type==1){",
+        "\tgenerated_digest_uid4.pack({hdr.ipv4.src,hdr.udp.srcPort});",
+        "}",
+    ]
+    expected_decl = [
+        "action setter_action_uid6() {",
+        "\tig_dprsr_md.digest_type = 1;",
+        "}",
+        "action drop_packet() {",
+        "\tig_dprsr_md.drop_ctl = 0x1;",
+        "}",
+        "table set_digest_or_drop_table_uid5 {",
+        "\tkey = {",
+        "\t\thdr.udp.dstPort: exact;",
+        "\t}",
+        "\tactions = {",
+        "\t\tsetter_action_uid6;",
+        "\t\tdrop_packet;",
+        "\t}",
+        "\tsize = 1;",
+        "\tconst default_action = drop_packet;",
+        "}",
+    ]
+    assert generated_deparser_decl == expected_deparser_decl
+    assert generated_headers == expected_headers
+    assert generated_deparser_apply == expected_deparser_apply
+    assert generated_decl == expected_decl
+
+
+def test_check_control_plane_set():
+    UID.reset()
+    env = Environment(
+        [],
+        [],
+        [],
+        [],
+        [("allowed", bool_t)],
+        "inp",
+        "out",
+        "met",
+        [SrcIp, UdpSrcPort],
+        None,
+    )
+    check_control_plane_set = CheckControlPlaneSet(
+        ["hdr.ipv4.src", "hdr.udp.srcPort"], "allowed", env
+    )
+    gc = check_control_plane_set.get_generated_code()
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    print(generated_apply)
+    expected_decl = [
+        "action setter_action_uid2_true() {",
+        "\tallowed = 1;",
+        "}",
+        "action setter_action_uid2_false() {",
+        "\tallowed = 0;",
+        "}",
+        "table exact_match_table_uid1 {",
+        "\tkey = {",
+        "\t\thdr.ipv4.src: exact;",
+        "\t\thdr.udp.srcPort: exact;",
+        "\t}",
+        "\tactions = {",
+        "\t\tsetter_action_uid2_true;",
+        "\t\tsetter_action_uid2_false;",
+        "\t}",
+        "\tsize = 1;",
+        "\tconst default_action = setter_action_uid2_false;",
+        "}",
+    ]
+    expected_apply = ["exact_match_table_uid1.apply();"]
+    assert generated_decl == expected_decl
+    assert generated_apply == expected_apply

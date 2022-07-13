@@ -48,5 +48,3 @@ class SharedArray(SharedElement):
     def get_repr(self):
         return [None]*self.size
 
-
-
