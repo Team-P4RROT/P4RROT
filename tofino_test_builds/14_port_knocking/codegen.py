@@ -12,14 +12,18 @@ UID.reset()
 fp = FlowProcessor(
         istruct=[],
         mstruct=[],
-        helpers=[("allowed", bool_t)],
+        helpers=[("unregistered", bool_t),("allowed", bool_t)],
         standard_fields = [SrcIp, UdpDstPort, UdpSrcPort]
     )
 
 fp\
-.add(CheckControlPlaneSet(["hdr.ipv4.src", "hdr.udp.srcPort"], "allowed"))\
-.add(If("allowed"))\
-    .add(Digest(["hdr.ipv4.src","hdr.udp.srcPort"], ["hdr.udp.dstPort"]))\
+.add(CheckControlPlaneSet(["hdr.ipv4.src", "hdr.udp.srcPort"], "unregistered"))\
+.add(LogicalNot("unregistered"))\
+.add(If("unregistered"))\
+    .add(CheckControlPlaneSet(["hdr.udp.dstPort"], "allowed"))\
+    .add(If("allowed"))\
+        .add(Digest(["hdr.ipv4.src","hdr.udp.srcPort"], ["hdr.udp.dstPort"]))\
+    .EndIf()\
 .EndIf()\
 
 

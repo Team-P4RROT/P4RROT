@@ -1,1 +1,1 @@
-Digest<generated_digest_uid8>() generated_digest_uid8;
+Digest<generated_digest_uid10>() generated_digest_uid10;
