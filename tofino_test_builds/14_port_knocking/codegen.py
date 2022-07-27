@@ -15,21 +15,21 @@ fp = FlowProcessor(
         helpers=[("unregistered", bool_t),("allowed", bool_t)],
         standard_fields = [SrcIp, UdpDstPort, UdpSrcPort]
     )
-
-fp\
-.add(CheckControlPlaneSet(["hdr.ipv4.src", "hdr.udp.srcPort"], "unregistered"))\
-.add(LogicalNot("unregistered"))\
-.add(If("unregistered"))\
-    .add(CheckControlPlaneSet(["hdr.udp.dstPort"], "allowed"))\
-    .add(If("allowed"))\
-        .add(Digest(["hdr.ipv4.src","hdr.udp.srcPort"], ["hdr.udp.dstPort"]))\
-    .EndIf()\
-.EndIf()\
-
+(
+fp
+.add(CheckControlPlaneSet(["hdr.ipv4.src", "hdr.udp.srcPort"], "unregistered"))
+.add(LogicalNot("unregistered"))
+.add(If("unregistered"))
+    .add(CheckControlPlaneSet(["hdr.udp.dstPort"], "allowed"))
+    .add(If("allowed"))
+        .add(Digest(["hdr.ipv4.src","hdr.udp.srcPort"], ["hdr.udp.dstPort"]))
+    .EndIf()
+.EndIf()
+)
 
 fs = FlowSelector(
         'IPV4_UDP',
-        [(UdpDstPort,5555)],
+        [],
         fp
     )
 

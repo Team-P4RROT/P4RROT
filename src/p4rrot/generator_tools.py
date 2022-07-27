@@ -157,6 +157,39 @@ def gen_struct(description: List[Tuple[str, KnownType]], name: str = None):
     cw.writeln("}")
     return name, cw.get_code()
 
+def gen_simple_parser_state(next_state: str, target_state: str, lookahead_struct=None, state_name: str = ""):
+
+    gc = GeneratedCode()
+
+    # state name
+    if state_name == "":
+        state_name = 'check_'+UID.get()
+    gc.get_parser().writeln('state {}{{'.format(state_name))
+    gc.get_parser().increase_indent()
+
+    # lookahead if required
+    if lookahead_struct != None:
+        struct_name, header_code = gen_struct(lookahead_struct)
+        gc.get_headers().write(header_code)
+        gc.get_parser().writeln("{} tmp = pkt.lookahead<{}>();\n".format(struct_name, struct_name))
+
+    # select
+    def get_handle(f):
+        if isinstance(f, StandardField):
+            return f.get_handle()
+        elif lookahead_struct != None:
+            d = {k: 'tmp.'+f for k, _ in lookahead_struct}
+            if f in d:
+                return d[f]
+        raise Exception('unknown field '+str(f))
+    #gc.get_parser().increase_indent()
+    gc.get_parser().writeln("transition "+ target_state+";")
+
+    gc.get_parser().decrease_indent()
+    gc.get_parser().writeln('}')
+
+    return state_name, gc
+
 
 def gen_decision_parser_state(conditions: str, next_state: str, target_state: str, lookahead_struct=None, state_name: str = ""):
 
@@ -400,7 +433,12 @@ class FlowSelector:
         
     def get_generated_code(self,next_state:str):
         if self.gc==None:
-            self.name,self.gc = gen_decision_parser_state(self.conditions, next_state, 
+            if self.conditions:
+                self.name,self.gc = gen_decision_parser_state(self.conditions, next_state, 
+                                    target_state=self.flow_processor.get_iparser(),
+                                    lookahead_struct=self.lookahed_struct)
+            else:
+                self.name,self.gc = gen_simple_parser_state(next_state, 
                                     target_state=self.flow_processor.get_iparser(),
                                     lookahead_struct=self.lookahed_struct)
         return self.name,self.gc

@@ -4,6 +4,7 @@ sys.path.append("../../src/")
 
 from p4rrot.core.commands import *
 from p4rrot.tofino.commands import *
+from p4rrot.tofino.stateful import *
 
 
 class MockUsingBlock:
@@ -569,3 +570,48 @@ def test_check_control_plane_set():
     expected_apply = ["exact_match_table_uid1.apply();"]
     assert generated_decl == expected_decl
     assert generated_apply == expected_apply
+
+def test_xor_shared_array():
+    UID.reset()
+    env = Environment(
+        [],
+        [],
+        [],
+        [],
+        [("map", uint32_t)],
+        "inp",
+        "out",
+        "met",
+        [SrcIp, UdpSrcPort],
+        [SharedArray('register',uint16_t, uint32_t, 100)],
+    )
+    xor_shared_array = XORSharedArray("register", "map", 0, env = env)
+    gc = xor_shared_array.get_generated_code()
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    expected_decl = ['RegisterAction<bit<32>,bit<16>,bit<32>>(register) xor_shared_array_action_uid1 = {', 'void apply(inout bit<32> to_store){', '\t\tto_store = to_store ^ map;', '\t}', '};']
+    expected_apply = ['xor_shared_array_action_uid1.execute(0);']
+    assert generated_apply == expected_apply
+    assert generated_decl == expected_decl
+    
+    UID.reset()
+    env = Environment(
+        [],
+        [],
+        [],
+        [],
+        [("map", uint32_t), ("result", uint32_t)],
+        "inp",
+        "out",
+        "met",
+        [SrcIp, UdpSrcPort],
+        [SharedArray('register',uint16_t, uint32_t, 100)],
+    )
+    xor_shared_array = XORSharedArray("register", "map", 0, "result", env = env)
+    gc = xor_shared_array.get_generated_code()
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    generated_decl = gc.get_decl().get_code().strip().split("\n")
+    expected_decl = ['RegisterAction<bit<32>,bit<16>,bit<32>>(register) xor_shared_array_action_uid1 = {', 'void apply(inout bit<32> to_store, out bit<32> to_return){', '\t\tto_store = to_store ^ map;', '\t\tto_return = to_store;', '\t}', '};']
+    expected_apply = ['result = xor_shared_array_action_uid1.execute(0);']
+    assert generated_apply == expected_apply
+    assert generated_decl == expected_decl

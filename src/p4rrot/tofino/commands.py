@@ -274,6 +274,69 @@ class WriteSharedArray(Command):
             )
         return gc
 
+class XORSharedArray(Command):
+    def __init__(
+        self,
+        shared_array,
+        map_var,
+        index_to_xor,
+        read_new_to=None,
+        env=None,
+    ):
+        self.shared_array = shared_array
+        self.map_var = map_var
+        self.index_to_xor = index_to_xor
+        self.read_new_to = read_new_to
+        self.env = env
+
+        if self.env != None:
+            self.check()
+
+    def check(self):
+        var_exists(self.shared_array, self.env)
+        if self.read_new_to:
+            var_exists(self.read_new_to, self.env)
+            var_is_of_type(self.read_new_to, self.env.get_varinfo(self.shared_array)["type"][2], self.env)
+            is_writeable(self.read_new_to, self.env)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        if self.read_new_to is not None:
+            target = self.env.get_varinfo(self.read_new_to)
+        array = self.env.get_varinfo(self.shared_array)
+        index_type = array["type"][1]
+        value_type = array["type"][2]
+        map = self.env.get_varinfo(self.map_var)
+        action_name = "xor_shared_array_action_" + UID.get()
+        apply_lines = ["to_store = to_store ^ {};".format(map["handle"])]
+        parameters = [{"mode": "inout", "type": value_type, "name": "to_store"}]
+        if self.read_new_to:
+            apply_lines.append("to_return = to_store;")
+            parameters.append(
+                {"mode": "out", "type": value_type, "name": "to_return"}
+            )
+        xor_shared_array_action = SharedArrayAction(
+            action_name,
+            self.shared_array,
+            value_type,
+            value_type,
+            index_type,
+            parameters,
+            apply_lines,
+        )
+        gc.concat(xor_shared_array_action.get_generated_code())
+        if self.read_new_to:
+            gc.get_apply().writeln(
+                "{} = {}.execute({});".format(
+                    target["handle"], action_name, self.index_to_xor
+                )
+            )
+        else:
+            gc.get_apply().writeln(
+                "{}.execute({});".format(action_name, self.index_to_xor)
+            )
+        return gc
+
 
 class ReadSharedArray(Command):
     def __init__(
@@ -644,6 +707,73 @@ class CheckControlPlaneSet(Command):
         )
         gc.concat(eval_table.get_generated_code())
         apply.writeln("{}.apply();".format(table_name))
+        return gc
+
+    def check(self):
+        pass
+
+    def execute(self, test_env):
+        pass
+
+class ReadFromControlPlaneSet(Command):
+    def __init__(self, keys, targets, env=None):
+        self.targets = targets
+        self.keys = keys
+        self.env = env
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        target_infos = []
+        for target in self.targets:
+            target_infos.append(self.env.get_varinfo(target))
+        match = []
+        for key in self.keys:
+            match.append(self.env.get_varinfo(key))
+        declaration = gc.get_decl()
+        table_name = "exact_match_table_" + UID.get()
+        apply = gc.get_apply()
+        setter_action = "setter_action_" + UID.get()
+        parameters = [p["type"].get_p4_type() + "  param" + UID.get() for p in target_infos]
+        declaration.writeln("action {}({}) {{".format(setter_action, ",".join(parameters)))
+        declaration.increase_indent()
+        for i in range(len(parameters)):
+            declaration.writeln(
+                "{} = {};".format(target_infos[i]["handle"], parameters[i].split(" ")[2])
+            )
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        actions = [setter_action]
+        try:
+            key = [
+                {"name": part_key["handle"], "match_type": "exact"} for part_key in match
+            ]
+        except TypeError:
+            key = [
+                {"name": part_key.get_handle(), "match_type": "exact"} for part_key in match
+            ]
+        size = 1
+        const_entries = []
+        eval_table = Table(
+            table_name, actions, key, size, const_entries
+        )
+        gc.concat(eval_table.get_generated_code())
+        apply.writeln("{}.apply();".format(table_name))
+        return gc
+
+    def check(self):
+        pass
+
+    def execute(self, test_env):
+        pass
+
+class DropPacket(Command):
+    def __init__(self, env=None):
+        self.env = env
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        apply = gc.get_apply()
+        apply.writeln("ig_dprsr_md.drop_ctl = 0x1;")
         return gc
 
     def check(self):
