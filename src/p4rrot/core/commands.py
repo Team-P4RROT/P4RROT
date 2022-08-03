@@ -236,12 +236,12 @@ class StrictComparator(StrictTwoOperandCommand):
         super().check()
         assert self.env.get_varinfo(self.target)['type']==bool_t
         vars_have_the_same_type(self.operand_a,self.operand_b,self.env)
-        assert self.env.get_varinfo(self.operand_a)['type'] in self.get_allowed_types()
-        assert self.env.get_varinfo(self.operand_b)['type'] in self.get_allowed_types()
+#        assert self.env.get_varinfo(self.operand_a)['type'] in self.get_allowed_types()
+#        assert self.env.get_varinfo(self.operand_b)['type'] in self.get_allowed_types()
         is_writeable(self.target,self.env)
 
-    def get_allowed_types(self):
-        return [ uint8_t, uint16_t, uint32_t, uint64_t ]
+#    def get_allowed_types(self):
+#        return [ uint8_t, uint16_t, uint32_t, uint64_t ]
 
 
 class GreaterThan(StrictComparator):
