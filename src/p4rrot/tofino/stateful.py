@@ -19,7 +19,7 @@ class SharedVariable(SharedElement):
 
     def get_generated_code(self):
         gc = GeneratedCode()
-        gc.get_decl().writeln('Register< {} {} >(1) {};'.format(self.itype.get_p4_type(),uint8_t.get_p4_type(),self.vaname))
+        gc.get_decl().writeln('Register< {} {} >(1) {};'.format(self.vtype.get_p4_type(),uint8_t.get_p4_type(),self.vaname))
         return gc
 
     def get_repr(self):
@@ -38,15 +38,13 @@ class SharedArray(SharedElement):
         return self.vaname
 
     def get_type(self):
-        return (SharedArray,self.vtype,self.size)
+        return (SharedArray,self.vtype, self.itype, self.size)
 
     def get_generated_code(self):
         gc = GeneratedCode()
-        gc.get_decl().writeln('Register< {}, {} >({}) {};'.format(self.itype.get_p4_type(), self.vtype.get_p4_type(),self.size,self.vaname))
+        gc.get_decl().writeln('Register< {}, {} >({}) {};'.format(self.vtype.get_p4_type(), self.itype.get_p4_type(),self.size,self.vaname))
         return gc
 
     def get_repr(self):
         return [None]*self.size
-
-
 

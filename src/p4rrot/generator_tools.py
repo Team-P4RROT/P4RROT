@@ -2,6 +2,7 @@
 # Useful classess and functions for code generation
 #
 
+import os
 from p4rrot.known_types import KnownType
 from typing import Dict, List, Tuple
 from p4rrot.standard_fields import *
@@ -80,6 +81,7 @@ class GeneratedCode:
         self.parser = CodeWriter()
         self.decl = CodeWriter()
         self.apply = CodeWriter()
+        self.arbitrary_writers = {}
 
     def get_headers(self):
         return self.headers
@@ -95,22 +97,33 @@ class GeneratedCode:
 
     def get_apply(self):
         return self.apply
+    
+    def get_or_create(self, gc_name):
+        if not gc_name in self.arbitrary_writers:
+            self.arbitrary_writers[gc_name] = CodeWriter()
+        return self.arbitrary_writers[gc_name]
 
     def dump(self,output_dir:str):
-        f = open(output_dir+'/a_headers.p4','w')
+        f = open(os.path.join(output_dir,'a_headers.p4'),'w')
         f.write(self.get_headers().get_code())
 
-        f = open(output_dir+'/a_hdrlist.p4','w')
+        f = open(os.path.join(output_dir,'a_hdrlist.p4'),'w')
         f.write(self.get_hdrlist().get_code())
 
-        f = open(output_dir+'/a_declarations.p4','w')
+        f = open(os.path.join(output_dir,'a_declarations.p4'),'w')
         f.write(self.get_decl().get_code())
 
-        f = open(output_dir+'/a_chains.p4','w')
+        f = open(os.path.join(output_dir,'a_chains.p4'),'w')
         f.write(self.get_parser().get_code())
 
-        f = open(output_dir+'/a_apply.p4','w')
+        f = open(os.path.join(output_dir,'a_apply.p4'),'w')
         f.write(self.get_apply().get_code())
+
+        
+        for gc_name in self.arbitrary_writers:
+            file_name = 'a_' + gc_name + '.p4'
+            f = open(os.path.join(output_dir,file_name), "w")
+            f.write(self.arbitrary_writers[gc_name].get_code())
 
     def	concat(self,other,add_padding=True):
         self.headers.write(other.headers.get_code(),indent_new_lines=add_padding)
@@ -118,6 +131,9 @@ class GeneratedCode:
         self.parser.write(other.parser.get_code(),indent_new_lines=add_padding)
         self.decl.write(other.decl.get_code(),indent_new_lines=add_padding)
         self.apply.write(other.apply.get_code(),indent_new_lines=add_padding)
+        
+        for arbitrary_writer in other.arbitrary_writers:
+            self.get_or_create(arbitrary_writer).write(other.arbitrary_writers[arbitrary_writer].get_code(),indent_new_lines=add_padding)
 
 
 
@@ -140,6 +156,39 @@ def gen_struct(description: List[Tuple[str, KnownType]], name: str = None):
         cw.writeln("\t{} {};".format(t.get_p4_type(), n))
     cw.writeln("}")
     return name, cw.get_code()
+
+def gen_simple_parser_state(next_state: str, target_state: str, lookahead_struct=None, state_name: str = ""):
+
+    gc = GeneratedCode()
+
+    # state name
+    if state_name == "":
+        state_name = 'check_'+UID.get()
+    gc.get_parser().writeln('state {}{{'.format(state_name))
+    gc.get_parser().increase_indent()
+
+    # lookahead if required
+    if lookahead_struct != None:
+        struct_name, header_code = gen_struct(lookahead_struct)
+        gc.get_headers().write(header_code)
+        gc.get_parser().writeln("{} tmp = pkt.lookahead<{}>();\n".format(struct_name, struct_name))
+
+    # select
+    def get_handle(f):
+        if isinstance(f, StandardField):
+            return f.get_handle()
+        elif lookahead_struct != None:
+            d = {k: 'tmp.'+f for k, _ in lookahead_struct}
+            if f in d:
+                return d[f]
+        raise Exception('unknown field '+str(f))
+    #gc.get_parser().increase_indent()
+    gc.get_parser().writeln("transition "+ target_state+";")
+
+    gc.get_parser().decrease_indent()
+    gc.get_parser().writeln('}')
+
+    return state_name, gc
 
 
 def gen_decision_parser_state(conditions: str, next_state: str, target_state: str, lookahead_struct=None, state_name: str = ""):
@@ -245,17 +294,19 @@ class FlowProcessor:
     The FlowProcessor defines the input-output structures and the processing steps for a given packet.
     '''
 
-    def __init__(self, istruct, ostruct=None, mstruct=None, locals=None, method='READ', iname=None, oname=None, state:List[SharedElement]=None, **kwargs):
+    def __init__(self, istruct, ostruct=None, mstruct=None, locals=None, helpers=None, method='READ', iname=None, oname=None, standard_fields=[], state:List[SharedElement]=None, **kwargs):
         self.istruct = istruct
         self.ostruct = ostruct
         self.mstruct = mstruct
         self.locals = locals
+        self.helpers = helpers
         self.method = method
         self.iname = iname
         self.oname = oname
         self.gc = None  # generated code
         self.ihandle = None
         self.iparser = None
+        self.standard_fields = standard_fields
         self.state = []
         if state!=None:
             self.state = state
@@ -272,7 +323,7 @@ class FlowProcessor:
         else:
             self.mname, self.mhandle, self.mcode = None, None, None
 
-        self.env = Environment(self.istruct,self.ostruct,self.mstruct,self.locals,self.ihandle,self.ohandle,self.mhandle,state)
+        self.env = Environment(self.istruct,self.ostruct,self.mstruct,self.locals,self.helpers,self.ihandle,self.ohandle,self.mhandle,self.standard_fields,state)
 
         self.block = Block(self.env)
 
@@ -314,6 +365,10 @@ class FlowProcessor:
         if self.locals != None:
             for n,t in self.locals:
                 self.gc.get_apply().writeln('{} {};'.format(t.get_p4_type(),n))
+        
+        if self.helpers != None:
+            for n,t in self.helpers:
+                self.gc.get_decl().writeln('{} {};'.format(t.get_p4_type(),n))
 
         self.gc.concat(self.block.get_generated_code())
 
@@ -379,7 +434,12 @@ class FlowSelector:
         
     def get_generated_code(self,next_state:str):
         if self.gc==None:
-            self.name,self.gc = gen_decision_parser_state(self.conditions, next_state, 
+            if self.conditions:
+                self.name,self.gc = gen_decision_parser_state(self.conditions, next_state, 
+                                    target_state=self.flow_processor.get_iparser(),
+                                    lookahead_struct=self.lookahed_struct)
+            else:
+                self.name,self.gc = gen_simple_parser_state(next_state, 
                                     target_state=self.flow_processor.get_iparser(),
                                     lookahead_struct=self.lookahed_struct)
         return self.name,self.gc
@@ -455,8 +515,9 @@ class Solution:
 
 class Environment:
     
-    def __init__(self,istruct,ostruct,mstruct,locals,iheader,oheader,mheader,state:List[SharedElement]):
+    def __init__(self,istruct,ostruct,mstruct,locals,helpers,iheader,oheader,mheader,standard_fields = [],state:List[SharedElement] = []):
         self.info = dict()
+        self.standard_fields = standard_fields
         for n,t in istruct:
             if n in self.info:
                 raise Exception('name "{}" is not unique'.format(n))
@@ -480,6 +541,12 @@ class Environment:
                     raise Exception('name "{}" is not unique'.format(n))
                 self.info[n] = { 'name':n, 'type':t, 'writeable':True, 'place': 'locals', 'handle':'{}'.format(n) }
 
+        if helpers!=None:            
+            for n,t in helpers:
+                if n in self.info:
+                    raise Exception('name "{}" is not unique'.format(n))
+                self.info[n] = { 'name':n, 'type':t, 'writeable':True, 'place': 'helpers', 'handle':'{}'.format(n) }
+
         if state!=None:
             for s in state:
                 if s.get_name() in self.info:
@@ -488,6 +555,10 @@ class Environment:
 
 
     def get_varinfo(self,vname:str):
+        if vname not in self.info:
+            for standard in self.standard_fields:
+                if standard.get_handle() == vname:
+                    return standard
         return self.info[vname]
     
     def has_var(self,vname:str):

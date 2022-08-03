@@ -8,6 +8,8 @@ def var_exists(vname:str,env:Environment):
 def vars_have_the_same_type(a:str,b:str,env:Environment):
     assert env.get_varinfo(a)['type']==env.get_varinfo(b)['type'], 'Variables {} and {} must be the same type'.format(a,b)
 
+def var_is_of_type(a:str, type:KnownType, env:Environment):
+    assert env.get_varinfo(a)['type']==type
 
 def is_writeable(vname:str,env:Environment):
     info = env.get_varinfo(vname)

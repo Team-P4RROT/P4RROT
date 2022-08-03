@@ -16,7 +16,7 @@ fp = FlowProcessor(
 )
 
 fp.add(
-    IncrementRegister("counter_register", uint32_t, uint32_t, 1, read_new_to = "counter_value", env=fp.get_env())
+    IncrementSharedArray("counter_register", uint32_t, uint32_t, 1, read_new_to = "counter_value", env=fp.get_env())
     )
 
 fs = FlowSelector("IPV4_UDP", [(UdpDstPort, 5555)], fp)
