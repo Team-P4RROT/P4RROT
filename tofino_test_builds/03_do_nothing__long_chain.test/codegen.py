@@ -27,5 +27,5 @@ for fs in selectors:
     solution.add_flow_selector(fs)
 
 script_dir = os.path.dirname(__file__)
-dir_path = os.path.join(script_dir, "test.p4app")
+dir_path = os.path.join(script_dir, "result.p4app")
 solution.get_generated_code().dump(dir_path)

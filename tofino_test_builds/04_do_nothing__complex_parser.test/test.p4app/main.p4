@@ -7,6 +7,7 @@
 
 
 // HEADERS AND TYPES ************************************************************
+#define BOOL_T bit<8>
 
 #include "standard_headers.p4"
 
@@ -14,6 +15,9 @@
 
 // #meta
 struct ingress_metadata_t {
+
+    bit<16> size_growth;
+    bit<16> size_loss;
 
 }
 
@@ -35,11 +39,11 @@ struct header_t {
 parser TofinoIngressParser(
         packet_in pkt,
         out header_t hdr,
-        out ingress_intrinsic_metadata_t ig_intr_md) {
+        out ingress_intrinsic_metadata_t meta) {
 
     state start {
-        pkt.extract(ig_intr_md);
-        transition select(ig_intr_md.resubmit_flag) {
+        pkt.extract(meta);
+        transition select(meta.resubmit_flag) {
             0 : parse_port_metadata;
         }
     }
@@ -71,13 +75,13 @@ parser SwitchIngressParser(
         packet_in pkt,
         out header_t hdr,
         out ingress_metadata_t ig_md,
-        out ingress_intrinsic_metadata_t ig_intr_md) {
+        out ingress_intrinsic_metadata_t meta) {
 
 
     TofinoIngressParser() tofino_parser;
 	
     state start {
-	    tofino_parser.apply(pkt, hdr, ig_intr_md);
+	    tofino_parser.apply(pkt, hdr, meta);
         transition parse_ethernet;
     }
 
@@ -133,7 +137,7 @@ parser SwitchIngressParser(
 control SwitchIngress(
         inout header_t hdr,
         inout ingress_metadata_t ig_md,
-        in ingress_intrinsic_metadata_t ig_intr_md,
+        in ingress_intrinsic_metadata_t meta,
         in ingress_intrinsic_metadata_from_parser_t ig_prsr_md,
         inout ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md,
         inout ingress_intrinsic_metadata_for_tm_t ig_tm_md) {

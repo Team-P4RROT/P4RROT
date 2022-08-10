@@ -14,5 +14,5 @@ fp = FlowProcessor(
 )
 gc = fp.get_generated_code()
 script_dir = os.path.dirname(__file__)
-dir_path = os.path.join(script_dir, "test.p4app")
+dir_path = os.path.join(script_dir, "result.p4app")
 gc.dump(dir_path)

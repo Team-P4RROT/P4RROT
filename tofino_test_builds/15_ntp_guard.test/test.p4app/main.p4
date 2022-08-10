@@ -156,12 +156,9 @@ control SwitchIngressDeparser(
         packet_out pkt,
         inout header_t hdr,
         in ingress_metadata_t ig_md,
-        in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md)
-		{
-				#include "a_ingress_deparser_declaration.p4"
+        in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md) {
 
     apply {
-		#include "a_ingress_deparser_apply.p4"
         pkt.emit(hdr);
     }
 }

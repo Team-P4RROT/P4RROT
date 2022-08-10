@@ -36,4 +36,4 @@ fs = FlowSelector(
 solution = Solution()
 solution.add_flow_processor(fp)
 solution.add_flow_selector(fs)
-solution.get_generated_code().dump('test.p4app')
+solution.get_generated_code().dump('result.p4app')
