@@ -1,1 +1,0 @@
-BOOL_T allowed;

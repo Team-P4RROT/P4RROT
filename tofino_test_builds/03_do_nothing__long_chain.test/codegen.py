@@ -1,11 +1,11 @@
 import sys
-sys.path.append('../../')
+sys.path.append('../../src/')
 
-from generator_tools import *
-from known_types import *    
+from p4rrot.generator_tools import *
+from p4rrot.known_types import *    
     
 UID.reset()
-fp = TofinoFlowProcessor(
+fp = FlowProcessor(
         istruct=[('a',uint32_t),('b',uint32_t)],
         ostruct=[('s',uint32_t)],
         mstruct=[('t',uint32_t)],    
@@ -27,5 +27,5 @@ for fs in selectors:
     solution.add_flow_selector(fs)
 
 script_dir = os.path.dirname(__file__)
-dir_path = os.path.join(script_dir, "test.p4app")
+dir_path = os.path.join(script_dir, "result.p4app")
 solution.get_generated_code().dump(dir_path)

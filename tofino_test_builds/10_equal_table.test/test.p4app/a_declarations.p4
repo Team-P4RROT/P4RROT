@@ -6,12 +6,12 @@ action setter_action_uid4_false() {
 	hdr.genhdr_uid1.x = 0;
 }
 table eval_table_uid2 {
-	actions = {
-	setter_action_uid4_true;
-	setter_action_uid4_false;
-	}
 	key = {
 		difference_variable_uid3: exact;
+	}
+	actions = {
+		setter_action_uid4_true;
+		setter_action_uid4_false;
 	}
 	size = 1;
 	const default_action = setter_action_uid4_false;

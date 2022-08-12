@@ -1,9 +1,9 @@
 import sys
 
-sys.path.append("../../")
+sys.path.append('../../src/')
 
-from generator_tools import *
-from known_types import *
+from p4rrot.generator_tools import *
+from p4rrot.known_types import *
 
 UID.reset()
 fp = FlowProcessor(
@@ -14,5 +14,5 @@ fp = FlowProcessor(
 )
 gc = fp.get_generated_code()
 script_dir = os.path.dirname(__file__)
-dir_path = os.path.join(script_dir, "test.p4app")
+dir_path = os.path.join(script_dir, "result.p4app")
 gc.dump(dir_path)
