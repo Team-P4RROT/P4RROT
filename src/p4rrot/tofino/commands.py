@@ -667,9 +667,10 @@ class Digest(Command):
 
 
 class CheckControlPlaneSet(Command):
-    def __init__(self, keys, target, env=None):
+    def __init__(self, keys, target, table_name = None, env=None):
         self.target = target
         self.keys = keys
+        self.table_name = table_name
         self.env = env
 
     def get_generated_code(self):
@@ -679,7 +680,7 @@ class CheckControlPlaneSet(Command):
         for key in self.keys:
             match.append(self.env.get_varinfo(key))
         declaration = gc.get_decl()
-        table_name = "exact_match_table_" + UID.get()
+        table_name = ("exact_match_table_" + UID.get()) if self.table_name is None else self.table_name
         apply = gc.get_apply()
         setter_action = "setter_action_" + UID.get()
         for bool_val in ["true", "false"]:
