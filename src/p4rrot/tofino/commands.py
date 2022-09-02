@@ -19,15 +19,6 @@ class UsingBlock(Block):
         return self.parent_block
 
 
-class UsingBlock(Block):
-    def __init__(self, env, parent_block):
-        super().__init__(env)
-        self.parent_block = parent_block
-
-    def EndUsing(self):
-        return self.parent_block
-
-
 class Using(Command):
     def __init__(
         self,
