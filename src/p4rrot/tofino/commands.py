@@ -1,5 +1,8 @@
-from p4rrot.known_types import KnownType
+
+import copy 
 from typing import Dict, List, Tuple
+
+from p4rrot.known_types import KnownType
 from p4rrot.standard_fields import *
 from p4rrot.generator_tools import *
 from p4rrot.core.commands import *
@@ -19,66 +22,75 @@ class UsingBlock(Block):
 class Using(Command):
     def __init__(
         self,
-        name,
-        shared_array_name,
-        input_type,
-        output_type,
-        index_type,
-        parameters,
+        shared_array_name: str,
+        index_var: str,
+        return_var=None,
         using_block=None,
         env=None,
     ):
-        self.name = name
         self.shared_array_name = shared_array_name
-        self.input_type = input_type
-        self.output_type = output_type
-        self.index_type = index_type
+        self.index_var = index_var
         self.using_block = using_block
-        self.parameters = parameters
+        self.return_var = return_var
         self.env = None
 
     def get_generated_code(self):
         gc = GeneratedCode()
-        declaration = gc.get_decl()
-        declaration.writeln(
-            "RegisterAction<{},{},{}>({}) {} = {{".format(
-                self.input_type.get_p4_type(),
-                self.index_type.get_p4_type(),
-                self.output_type.get_p4_type(),
-                self.shared_array_name,
-                self.name,
-            )
-        )
-        declaration.write("void apply(")
-        not_first_parameter = False
-        for parameter in self.parameters:
-            if not_first_parameter:
-                declaration.write(", ")
-            declaration.write(
-                "{} {} {}".format(
-                    parameter["mode"],
-                    parameter["type"].get_p4_type(),
-                    parameter["name"],
-                )
-            )
-            not_first_parameter = True
-        declaration.writeln("){")
-        declaration.increase_indent()
-        declaration.increase_indent()
+        
+        index_info = self.env.get_varinfo(self.index_var)
+        reg_info = self.env.get_varinfo(self.shared_array_name)
+        reg_value_type = reg_info['type'][1].get_p4_type()
+        if self.return_var!=None:        
+            return_info = self.env.get_varinfo(self.return_var)
+            return_type = return_info['type'].get_p4_type()
+        else:
+            return_type = reg_value_type
+
+        action_name = 'regac_'+UID.get()
+
+        gc.get_decl().writeln(f"RegisterAction<{reg_value_type},_,{return_type}>({reg_info['handle']}) {action_name} = {{")
+        gc.get_decl().increase_indent()
+        
+        gc.get_decl().writeln(f"void apply(inout {reg_value_type} {self.shared_array_name},  out {return_type} {self.return_var}){{")
+        gc.get_decl().increase_indent()
+
         if self.using_block:
             tmp = self.using_block.get_generated_code()
+            apply = tmp.get_apply()
+            gc.get_decl().write(apply.get_code(),indent_new_lines=True)
+            tmp.get_apply().code = '' # TODO: it should use a function without relying on the representation
+
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln("}")
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln("};")
+
+        if self.using_block:
             gc.concat(tmp)
-        declaration.decrease_indent()
-        declaration.writeln("}")
-        declaration.decrease_indent()
-        declaration.writeln("};")
+
+        if self.return_var!=None:
+            gc.get_apply().writeln(f"{return_info['handle']} = {action_name}.execute({index_info['handle']});")
+        else:
+            gc.get_apply().writeln(f"{action_name}.execute({index_info['handle']});")
+
         return gc
+    
+    def check(self):
+        pass
 
     def should_return(self):
         return self.using_block == None
 
     def get_return_object(self, parent):
-        self.using_block = UsingBlock(self.env, parent)
+        value_type = self.env.get_varinfo(self.shared_array_name)['type'][1]
+
+        new_env = copy.deepcopy(self.env)
+        new_env.info[self.shared_array_name]["handle"]=self.shared_array_name # TODO: set_varinfo is needed
+        new_env.info[self.shared_array_name]["type"]=value_type # TODO: set_varinfo is needed
+        new_env.info[self.shared_array_name]["writeable"]=True # TODO: set_varinfo is needed
+        if self.return_var!=None:
+            new_env.info[self.return_var]["handle"]=self.return_var # TODO: set_varinfo is needed
+        self.using_block = UsingBlock(new_env, parent)
         return self.using_block
 
 
