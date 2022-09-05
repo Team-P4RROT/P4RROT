@@ -6,7 +6,45 @@ from p4rrot.core.commands import *
 from p4rrot.tofino.commands import *
 from p4rrot.tofino.stateful import *
 
+# Using
 
+def test_using_code_generation_without_return():
+    UID.reset()
+    fp = FlowProcessor(istruct=[('index',uint8_t),('value',uint32_t)],state=[SharedArray('store',uint32_t,uint8_t,256)])
+    (
+    fp
+    .add(Using('store','index'))
+            .add(StrictAssignVar('store','value'))
+        .EndUsing()
+    )
+    gen_decl = fp.get_generated_code().get_decl().get_code()
+    exp_decl = """RegisterAction<bit<32>,_,bit<32>>(store) regac_uid2 = {
+                        void apply(inout bit<32> store,  out bit<32> None){
+                                store = hdr.genhdr_uid1.value;
+                        }
+                  };"""
+    assert gen_decl.split() == exp_decl.split()
+
+
+def test_using_code_generation_with_return():
+    UID.reset()
+    fp = FlowProcessor(istruct=[('index',uint8_t),('value',uint32_t),('result',uint32_t)],state=[SharedArray('store',uint32_t,uint8_t,256)])
+    (
+    fp
+    .add(Using('store','index',return_var='result'))
+            .add(StrictAssignVar('result','store'))
+            .add(StrictAssignVar('store','value'))
+        .EndUsing()
+    )
+    gen_decl = fp.get_generated_code().get_decl().get_code()
+    print(gen_decl)
+    exp_decl = """RegisterAction<bit<32>,_,bit<32>>(store) regac_uid2 = {
+                        void apply(inout bit<32> store,  out bit<32> result){
+                                result = store;
+                                store = hdr.genhdr_uid1.value;
+                        }
+                  };"""
+    assert gen_decl.split() == exp_decl.split()
 
 # shared_array, number_type, index_type, index_to_increase, step = 1, read_new_to = None, env=None):
 

@@ -22,8 +22,8 @@ class UsingBlock(Block):
 class Using(Command):
     def __init__(
         self,
-        shared_array_name,
-        index_var,
+        shared_array_name: str,
+        index_var: str,
         return_var=None,
         using_block=None,
         env=None,
@@ -40,8 +40,12 @@ class Using(Command):
         index_info = self.env.get_varinfo(self.index_var)
         reg_info = self.env.get_varinfo(self.shared_array_name)
         reg_value_type = reg_info['type'][1].get_p4_type()
-        return_info = self.env.get_varinfo(self.return_var)
-        return_type = return_info['type'].get_p4_type()
+        if self.return_var!=None:        
+            return_info = self.env.get_varinfo(self.return_var)
+            return_type = return_info['type'].get_p4_type()
+        else:
+            return_type = reg_value_type
+
         action_name = 'regac_'+UID.get()
 
         gc.get_decl().writeln(f"RegisterAction<{reg_value_type},_,{return_type}>({reg_info['handle']}) {action_name} = {{")
@@ -78,9 +82,14 @@ class Using(Command):
         return self.using_block == None
 
     def get_return_object(self, parent):
+        value_type = self.env.get_varinfo(self.shared_array_name)['type'][1]
+
         new_env = copy.deepcopy(self.env)
-        new_env.get_varinfo(self.shared_array_name)["handle"]=self.shared_array_name # TODO: set_varinfo is needed
-        new_env.get_varinfo(self.return_var)["handle"]=self.return_var # TODO: set_varinfo is needed
+        new_env.info[self.shared_array_name]["handle"]=self.shared_array_name # TODO: set_varinfo is needed
+        new_env.info[self.shared_array_name]["type"]=value_type # TODO: set_varinfo is needed
+        new_env.info[self.shared_array_name]["writeable"]=True # TODO: set_varinfo is needed
+        if self.return_var!=None:
+            new_env.info[self.return_var]["handle"]=self.return_var # TODO: set_varinfo is needed
         self.using_block = UsingBlock(new_env, parent)
         return self.using_block
 
