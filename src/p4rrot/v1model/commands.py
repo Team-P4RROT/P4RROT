@@ -7,6 +7,28 @@ from p4rrot.checks import *
 import random
 
 
+class GetPacketLength(Command):
+    
+    def __init__(self,vname:str,env=None):
+        self.vname = vname
+        self.env = env
+
+        if self.env!=None:
+            self.check()
+
+    def check(self):
+        var_exists(self.vname,self.env)
+        assert self.env.get_varinfo(self.vname)['type'] in [ uint8_t, uint16_t ,uint32_t, uint64_t ], 'Not supported type'
+        is_writeable(self.vname,self.env)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        vi = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = standard_metadata.packet_length;'.format(vi['handle']))
+        return gc
+
+    def execute(self,test_env):
+        pass
 
 class AssignRandomValue(Command):
     
