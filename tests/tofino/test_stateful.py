@@ -21,7 +21,7 @@ def test_shared_variable_generated_code():
     shared = SharedVariable("shared_v_3", uint16_t)
     generated = shared.get_generated_code().get_decl().get_code()
     out_line = generated.strip()
-    assert out_line == "Register< bit<16> bit<8> >(1) shared_v_3;"
+    assert out_line == "Register< bit<16>, bit<8> >(1) shared_v_3;"
 
 
 def test_shared_variable_repr():
