@@ -18,7 +18,7 @@
 
 // clone workaround
 #ifdef TARGET_NFP
-    #define clone(T,S) clone(CloneType.I2E,S);standard_metadata.clone_spec=1<<31|(bit<32>)standard_metadata.egress_spec
+    #define clone(T,S) clone(CloneType.I2I,S);standard_metadata.clone_spec=1<<31|(bit<32>)standard_metadata.egress_spec
 #endif
 
 // atomic workaround for NFP
