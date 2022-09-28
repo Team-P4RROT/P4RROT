@@ -1,18 +1,32 @@
-BOOL_T exploit;
-action setter_action_uid4_true() {
-	exploit = 1;
+bit<8> x;
+bit<8> y;
+action case_uid2(){
+	y = 7;
 }
-action setter_action_uid4_false() {
-	exploit = 0;
+action case_uid3(){
+	y = 5;
 }
-table exact_match_table_uid3 {
-	key = {
-		hdr.genhdr_uid1.origin_timestamp: exact;
+action case_uid4(){
+	y = 11;
+}
+action default_case_uid5(){
+	y = 9;
+}
+table switch_uid6 {
+	key  = {
+		x: exact;
 	}
-	actions = {
-		setter_action_uid4_true;
-		setter_action_uid4_false;
+	actions  = {
+		case_uid2;
+		case_uid3;
+		case_uid4;
+		default_case_uid5;
+		NoAction;
 	}
-	size = 1;
-	const default_action = setter_action_uid4_false;
+	const default_action = default_case_uid5;
+	const entries = {
+		( 5 ) : case_uid2(); 
+		( 9 ) : case_uid3(); 
+		( 11 ) : case_uid4(); 
+	}
 }
