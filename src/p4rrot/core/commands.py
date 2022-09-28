@@ -684,3 +684,154 @@ class CastVar(Command):
         ti = self.env.get_varinfo(self.target)
         test_env[self.target] = ti['type'].cast_value(test_env[self.source])
 
+
+
+class TableCaseBlock(Block):
+
+    def __init__(self, env, parent_block, value_list):
+        super().__init__(env)        
+        self.parent_block = parent_block
+        self.next_guess = None
+        self.next_block = None
+        self.value_list = value_list
+
+    def Case(self, value_list):
+        self.next_guess = value_list
+        self.next_block = TableCaseBlock(self.env,self.parent_block,value_list)
+        return self.next_block
+
+    def Default(self):
+        self.next_block = DefaultBlock(self.env,self.parent_block)
+        return self.next_block
+
+    def EndSwitch(self):
+        return self.parent_block
+
+    def get_next_guess(self):
+        return self.next_guess
+
+    def get_next_block(self):
+        return self.next_block
+
+    def get_value_list(self):
+        return self.value_list
+
+
+class SwitchTable(Command):
+
+    def __init__(self,vnames:List[str],env=None,cases=None):
+        self.env = env
+        self.vnames = vnames
+
+        if cases!=None:
+            raise NotImplemented('passing cses using parameters is not yet supported')
+
+        if self.env!=None:
+            self.check()
+
+    def check(self):
+        pass 
+
+    def should_return(self):
+        return True
+
+    def get_return_object(self,parent):
+        self.parent = parent
+        return self
+
+    def Case(self,value_list):
+        self.first_guess = value_list
+        self.first_block = TableCaseBlock(self.env,self.parent,value_list)
+        return self.first_block
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        
+        # generate actions for the cases
+        action_names = []
+        required_values = []
+        actual_block = self.first_block
+        while actual_block != None:
+            if type(actual_block)==DefaultBlock:
+                act_name = "default_case_"+UID.get()
+            else:
+                act_name = "case_"+UID.get()
+                required_values.append(actual_block.get_value_list())
+            action_names.append(act_name)
+            
+            tmp = actual_block.get_generated_code()
+            apply = tmp.get_apply()
+            tmp.apply = CodeWriter() # TODO: API to clear code segment
+            gc.concat(tmp)
+            gc.get_decl().writeln(f"action {act_name}(){{")
+            gc.get_decl().increase_indent()
+            gc.get_decl().write(apply.get_code(),indent_new_lines=True)
+            gc.get_decl().decrease_indent()
+            gc.get_decl().writeln('}')
+
+            next_guess = actual_block.get_next_guess()
+            actual_block = actual_block.get_next_block()
+      
+        # generate table definition
+        table_name = 'switch_'+UID.get()
+        gc.get_decl().writeln(f'table {table_name} {{')
+        gc.get_decl().increase_indent()
+        
+        gc.get_decl().writeln('key  = {')
+        gc.get_decl().increase_indent()
+        for v in self.vnames:
+            vi = self.env.get_varinfo(v)
+            if self.env.has_var(v):
+                gc.get_decl().writeln(f"{vi['handle']}: exact;")
+            else:
+                gc.get_decl().writeln(f"{vi.get_handle()}: exact;")
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln('}')
+
+        gc.get_decl().writeln('actions  = {')
+        gc.get_decl().increase_indent()
+        for act in action_names:
+            gc.get_decl().writeln(f"{act};")
+        gc.get_decl().writeln("NoAction;")
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln('}')
+        
+        if 'default_' in action_names[-1]:
+            gc.get_decl().writeln(f'const default_action = {action_names[-1]};')
+        else:
+            gc.get_decl().writeln(f'const default_action = NoAction;')
+
+
+        gc.get_decl().writeln('const entries = {')
+        gc.get_decl().increase_indent()
+        for i,vs in enumerate(required_values):
+            p4_literals = []
+            for varname, value in zip(self.vnames,vs):
+                if self.env.has_var(varname):
+                    p4_literals.append( self.env.get_varinfo(varname)['type'].to_p4_literal(value) )
+                else:
+                    p4_literals.append( self.env.get_varinfo(varname).get_type().to_p4_literal(value) )
+
+            gc.get_decl().writeln(f"( {' , '.join(p4_literals) } ) : {action_names[i]}(); ")
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln('}')
+
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln('}')
+
+        # call the table       
+        gc.get_apply().writeln(f"{table_name}.apply();")
+        
+        return gc
+
+    def execute(self,test_env):
+        value = test_env[self.vname]
+        actual_block = self.first_block
+        actual_guess = self.first_guess
+
+        while actual_block!=None and ( actual_guess!=None and value!=test_env[actual_guess] ):
+            actual_guess = actual_block.get_next_guess()
+            actual_block = actual_block.get_next_block()
+
+        if actual_block!=None:
+            actual_block.test(test_env)
