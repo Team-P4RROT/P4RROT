@@ -1,5 +1,6 @@
 
 import copy 
+import random
 from typing import Dict, List, Tuple
 
 from p4rrot.known_types import KnownType
@@ -8,6 +9,33 @@ from p4rrot.generator_tools import *
 from p4rrot.core.commands import *
 from p4rrot.tofino.helper import *
 from p4rrot.checks import *
+
+
+class TofinoAssignRandomValue(Command):
+    
+    def __init__(self,vname:str,env=None) -> None:
+        self.vname = vname
+        self.env = env
+
+        if self.env!=None:
+            self.check()
+
+    def check(self):
+        var_exists(self.vname,self.env)
+        assert self.env.get_varinfo(self.vname)['type'] in [ uint8_t, uint16_t ,uint32_t, uint64_t ], 'Not supported random generation'
+        is_writeable(self.vname,self.env)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        vi = self.env.get_varinfo(self.vname)
+        generator_name = 'rnd_'+UID.get()
+        gc.get_decl().writeln('Random<{}>() {};'.format(vi['type'].get_p4_type(),generator_name))
+        gc.get_apply().writeln('{} = {}.get();'.format( vi['handle'],generator_name))
+        return gc
+
+    def execute(self,test_env):
+        target_type = self.env.get_varinfo(self.vname)['type']
+        test_env[self.vname] = random.randint(0,2**(target_type.get_size()*8-1))
 
 
 class UsingBlock(Block):
