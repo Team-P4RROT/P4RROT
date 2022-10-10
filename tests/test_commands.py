@@ -15,4 +15,4 @@ def test_expr_to_p4():
 
         def get_varinfo(self,v):
             return {'handle':'replaced_'+v}
-    assert expr_to_p4('a = a.a + a + b + c',FakeEnv()) == 'replaced_a = a.a + replaced_a + replaced_b + c'
+    assert expr_to_p4('a = a.a + a + b + c/**/',FakeEnv()) == 'replaced_a = a.a + replaced_a + replaced_b + c/**/'
