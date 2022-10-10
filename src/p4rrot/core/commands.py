@@ -844,8 +844,11 @@ def expr_to_p4(expr:str,env:Environment):
 
 
 class P4Expr(Command):
-    def __init__(self,expr:str,env=None):
+    def __init__(self,expr:str,in_action=False,in_table=False,table_annotation=None,env=None):
         self.expr = expr
+        self.in_action = in_action or in_table
+        self.in_table = in_table
+        self.table_annotation = table_annotation
         self.env = env
 
     def check(self):
@@ -853,7 +856,28 @@ class P4Expr(Command):
         
     def get_generated_code(self):
         gc = GeneratedCode()
-        gc.get_apply().writeln(f"{expr_to_p4(self.expr,self.env)};")
+        if not self.in_action:
+            gc.get_apply().writeln(f"{expr_to_p4(self.expr,self.env)};")
+        else:
+            act_name = 'p4expr_'+UID.get()
+            gc.get_decl().writeln(f"action {act_name}(){{ {expr_to_p4(self.expr,self.env)}; }}")
+            if self.in_table:
+                # define the table
+                table_name = 'p4exprtable_'+UID.get()
+                if self.table_annotation!=None:
+                    gc.get_decl().writeln(self.table_annotation)
+                gc.get_decl().writeln(f"table {table_name}{{")
+                gc.get_decl().increase_indent()
+                gc.get_decl().writeln(f"actions = {{ {act_name}; }}")
+                gc.get_decl().writeln(f"const default_action = {act_name};")
+                gc.get_decl().decrease_indent()
+                gc.get_decl().writeln(f"}}")
+                # call the table
+                gc.get_apply().writeln(f"{table_name}.apply();")
+            else:
+                # call the action
+                gc.get_apply().writeln(f"{act_name}();")
+
         return gc
 
 class IfExpr(Command):
