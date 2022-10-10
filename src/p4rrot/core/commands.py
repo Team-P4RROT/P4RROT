@@ -835,3 +835,76 @@ class SwitchTable(Command):
 
         if actual_block!=None:
             actual_block.test(test_env)
+
+
+def expr_to_p4(expr:str,env:Environment):
+    ts = expr.split()
+    p4 = ' '.join(map(lambda t: env.get_varinfo(t)['handle'] if t.isidentifier() else t,ts))
+    return p4
+
+
+class P4Expr(Command):
+    def __init__(self,expr:str,env=None):
+        self.expr = expr
+        self.env = env
+
+    def check(self):
+        pass
+        
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_apply().writeln(f"{expr_to_p4(self.expr,self.env)};")
+        return gc
+
+class IfExpr(Command):
+
+    def __init__(self,expr:str,env=None,then_block=None,else_block=None):
+        self.env = env
+        self.expr = expr
+        self.then_block = then_block
+        self.else_block = else_block
+
+        if self.env!=None:
+            self.check()
+
+    def check(self):
+        pass
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_apply().writeln('if ({}){{'.format(expr_to_p4(self.expr,self.env)))
+        gc.get_apply().increase_indent()
+
+        if self.then_block!=None:
+            gc.concat( self.then_block.get_generated_code() )
+        gc.get_apply().decrease_indent()
+        gc.get_apply().writeln('}')
+
+        if self.else_block!=None:
+            gc.get_apply().writeln('else{')
+            gc.get_apply().increase_indent()
+            gc.concat( self.else_block.get_generated_code() )
+            gc.get_apply().decrease_indent()
+            gc.get_apply().writeln('}')
+        
+        return gc
+
+    def should_return(self):
+        return self.then_block == None
+
+    def get_return_object(self,parent):
+        return self.create_then_block(parent)
+
+    def create_then_block(self,parent_block):
+        self.then_block = ThenBlock(self.env,parent_block,self)
+        return self.then_block
+
+    def create_else_block(self,parent_block):
+        self.else_block = ElseBlock(self.env,parent_block)
+        return self.else_block
+
+    def execute(self,test_env):
+        if test_env[self.vname]:
+            self.then_block.test(test_env)
+        elif self.else_block!=None:
+            self.else_block.test(test_env)
