@@ -5,6 +5,50 @@ from p4rrot.standard_fields import *
 from p4rrot.generator_tools import *
 from p4rrot.checks import *
     
+class Touch(Command):
+    """
+    Pretends to update a variable but never changes its value. 
+    (Good for tricking the compiler if needed.)
+    """
+
+    def __init__(self,vname,env=None):
+        self.vname = vname
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.vname,self.env)
+        is_writeable(self.vname,self.env)
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        vi  = self.env.get_varinfo(self.vname)
+        table_name = 'touch_'+self.vname+'_'+UID.get()
+        action_name = 'never_call_'+UID.get()
+
+        gc.get_decl().writeln(f'action {action_name}({vi["type"].get_p4_type()} x){{ {vi["handle"]} = x; }}')
+
+        gc.get_decl().writeln(f"table {table_name}{{")
+        gc.get_decl().increase_indent()
+
+        gc.get_decl().writeln(f"key = {{ {vi['handle']}: exact; }}")
+        gc.get_decl().writeln(f"actions = {{ {action_name}; NoAction; }}")
+        gc.get_decl().writeln("const default_action = NoAction;")
+    
+        gc.get_decl().decrease_indent()
+        gc.get_decl().writeln("}")
+
+        gc.get_apply().writeln(f"{table_name}.apply();")
+
+        return gc
+    
+    def execute(self,test_env):
+        # it does nothing intentionally
+        pass
+
+
 
 class AssignConst(Command):
     
