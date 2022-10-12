@@ -795,3 +795,35 @@ class DropPacket(Command):
     def execute(self, test_env):
         pass
 
+
+class UpdateLPF(Command):
+    def __init__(self,target,source,index,value,env=None):
+        self.target = target
+        self.source = source
+        self.index = index
+        self.value = value
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.target,self.env)
+        is_writeable(self.target,self.env)
+        var_exists(self.source,self.env)
+        var_exists(self.index,self.env)
+        var_exists(self.value,self.env)
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        si  = self.env.get_varinfo(self.source)
+        ti  = self.env.get_varinfo(self.target)
+        vi  = self.env.get_varinfo(self.value)
+        ii  = self.env.get_varinfo(self.index)
+        gc.get_apply().writeln(f"{ti['handle']} = {si['handle']}.execute({vi['handle']},{ii['handle']});")
+        return gc
+    
+    def execute(self,test_env):
+        raise Exception("Not implemented")
+
+        

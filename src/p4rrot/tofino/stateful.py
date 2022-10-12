@@ -48,3 +48,24 @@ class SharedArray(SharedElement):
     def get_repr(self):
         return [None]*self.size
 
+
+class LPF(SharedElement):
+    def __init__(self,vname:str,vtype:KnownType,itype:KnownType,size:int):
+        self.vaname = vname
+        self.vtype = vtype
+        self.itype = itype
+        self.size = size
+
+    def get_name(self):
+        return self.vaname
+
+    def get_type(self):
+        return (LPF,self.vtype,self.itype,self.size)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_decl().writeln(f'Lpf< {self.vtype.get_p4_type()}, {self.itype.get_p4_type()} >({self.size}) {self.vaname};')
+        return gc
+
+    def get_repr(self):
+        raise Exception("Not implemented")
