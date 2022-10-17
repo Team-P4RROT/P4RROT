@@ -879,3 +879,100 @@ class SwitchTable(Command):
 
         if actual_block!=None:
             actual_block.test(test_env)
+
+
+def expr_to_p4(expr:str,env:Environment):
+    ts = expr.split()
+    p4 = ' '.join(map(lambda t: env.get_varinfo(t)['handle'] if t.isidentifier() else t,ts))
+    return p4
+
+
+class P4Expr(Command):
+    def __init__(self,expr:str,in_action=False,in_table=False,table_annotation=None,env=None):
+        self.expr = expr
+        self.in_action = in_action or in_table
+        self.in_table = in_table
+        self.table_annotation = table_annotation
+        self.env = env
+
+    def check(self):
+        pass
+        
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        if not self.in_action:
+            gc.get_apply().writeln(f"{expr_to_p4(self.expr,self.env)};")
+        else:
+            act_name = 'p4expr_'+UID.get()
+            gc.get_decl().writeln(f"action {act_name}(){{ {expr_to_p4(self.expr,self.env)}; }}")
+            if self.in_table:
+                # define the table
+                table_name = 'p4exprtable_'+UID.get()
+                if self.table_annotation!=None:
+                    gc.get_decl().writeln(self.table_annotation)
+                gc.get_decl().writeln(f"table {table_name}{{")
+                gc.get_decl().increase_indent()
+                gc.get_decl().writeln(f"actions = {{ {act_name}; }}")
+                gc.get_decl().writeln(f"const default_action = {act_name};")
+                gc.get_decl().decrease_indent()
+                gc.get_decl().writeln(f"}}")
+                # call the table
+                gc.get_apply().writeln(f"{table_name}.apply();")
+            else:
+                # call the action
+                gc.get_apply().writeln(f"{act_name}();")
+
+        return gc
+
+class IfExpr(Command):
+
+    def __init__(self,expr:str,env=None,then_block=None,else_block=None):
+        self.env = env
+        self.expr = expr
+        self.then_block = then_block
+        self.else_block = else_block
+
+        if self.env!=None:
+            self.check()
+
+    def check(self):
+        pass
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_apply().writeln('if ({}){{'.format(expr_to_p4(self.expr,self.env)))
+        gc.get_apply().increase_indent()
+
+        if self.then_block!=None:
+            gc.concat( self.then_block.get_generated_code() )
+        gc.get_apply().decrease_indent()
+        gc.get_apply().writeln('}')
+
+        if self.else_block!=None:
+            gc.get_apply().writeln('else{')
+            gc.get_apply().increase_indent()
+            gc.concat( self.else_block.get_generated_code() )
+            gc.get_apply().decrease_indent()
+            gc.get_apply().writeln('}')
+        
+        return gc
+
+    def should_return(self):
+        return self.then_block == None
+
+    def get_return_object(self,parent):
+        return self.create_then_block(parent)
+
+    def create_then_block(self,parent_block):
+        self.then_block = ThenBlock(self.env,parent_block,self)
+        return self.then_block
+
+    def create_else_block(self,parent_block):
+        self.else_block = ElseBlock(self.env,parent_block)
+        return self.else_block
+
+    def execute(self,test_env):
+        if test_env[self.vname]:
+            self.then_block.test(test_env)
+        elif self.else_block!=None:
+            self.else_block.test(test_env)
