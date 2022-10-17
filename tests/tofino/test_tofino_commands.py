@@ -1,10 +1,34 @@
 import sys
+import random
 
 sys.path.append("../../src/")
 
 from p4rrot.core.commands import *
 from p4rrot.tofino.commands import *
 from p4rrot.tofino.stateful import *
+
+# Random
+
+def test_tofino_assign_random_value():
+    fp = FlowProcessor(
+        istruct = [('a',uint8_t),('b',uint16_t),('c',uint32_t),('d',uint64_t)],
+    )
+
+    (
+    fp
+    .add(TofinoAssignRandomValue('a'))
+    .add(TofinoAssignRandomValue('b'))
+    .add(TofinoAssignRandomValue('c'))
+    .add(TofinoAssignRandomValue('d'))
+    )  
+
+    random.seed(76576)
+    for _ in range(100):
+        res = fp.test({'a':0,'b':0,'c':0,'d':0})
+        assert 0 <= res['a'] <= 2**8-1\
+           and 0 <= res['b'] <= 2**16-1\
+           and 0 <= res['c'] <= 2**32-1\
+           and 0 <= res['d'] <= 2**64-1 
 
 # Using
 
