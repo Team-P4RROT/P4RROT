@@ -869,11 +869,11 @@ class SwitchTable(Command):
         return gc
 
     def execute(self,test_env):
-        value = test_env[self.vname]
+        value = [ test_env[vname] for vname in self.vnames ] 
         actual_block = self.first_block
         actual_guess = self.first_guess
 
-        while actual_block!=None and ( actual_guess!=None and value!=test_env[actual_guess] ):
+        while actual_block!=None and ( actual_guess!=None and value!= actual_guess ):
             actual_guess = actual_block.get_next_guess()
             actual_block = actual_block.get_next_block()
 
