@@ -197,7 +197,7 @@ class LeftShift(Command):
     
     def execute(self,test_env):
         vi = self.env.get_varinfo(self.vname)
-        test_env[self.vname] = vi['type'].cast_value(self.value)
+        test_env[self.target] = ti['type'].cast_value(test_env[self.vname] << self.value)
 
 class RightShift(Command):
 
@@ -222,7 +222,7 @@ class RightShift(Command):
     
     def execute(self,test_env):
         vi = self.env.get_varinfo(self.vname)
-        test_env[self.vname] = vi['type'].cast_value(self.value)
+        test_env[self.target] = ti['type'].cast_value(test_env[self.vname] >> self.value)
 
 
 class StrictSubtraction(StrictNumericTwoOperandCommand):
