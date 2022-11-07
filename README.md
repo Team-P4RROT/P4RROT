@@ -34,4 +34,4 @@ Read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
 
 ## Discalimer
 
-The library is released under MIT license but please note that some of the tests, examples and templates might be released under some other license.
+The library is released under MIT license but please note that some of the tests, examples and templates might have different licensing.
