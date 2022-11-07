@@ -249,6 +249,113 @@ class PushToStack(Command):
         gc.get_apply().writeln('{}.write(0,{});'.format(self.index_name,self.temp_name))
         return gc
 
+#Improvement on the original BloomFilter implementation to accept a tuple of values and possibly use 2 hash functions
+class GeneralBloomFilter(SharedElement):
+
+    def __init__(self,vname:str,vtype:KnownType,capacity:int, number_of_hashes: int, use_two_hash_funcs: bool = False):
+        self.vaname = vname
+        self.reg_name_1 = '_' + vname + '_register_1'
+        self.reg_name_2 = '_' + vname + '_register_2'
+        self.vtype = vtype
+        self.capacity = capacity
+        self.two_hash_funcs = use_two_hash_funcs
+        
+        self.value_check = '_' + self.vaname + '_value_check' + UID.get()
+        self.hash_name_1 = '_' + self.vaname + '_hash_1' + UID.get()
+        self.hash_name_2 = '_' + self.vaname + '_hash_2' + UID.get()
+        self.hashres_name_1 = '_' + self.vaname + '_result_1' + UID.get()
+        self.hashres_name_2 = '_' + self.vaname + '_result_2' + UID.get()
+        self.properties = {'capacity': capacity, 'hash_name_1' : self.hash_name_1, 'two_hash_funcs' : self.two_hash_funcs,
+        "reg_name_1" : self.reg_name_1, "reg_name_2" : self.reg_name_2, "hashres_name_1" : self.hashres_name_1, "hashres_name_2" : self.hashres_name_2}
+
+    def get_properties(self):
+        return self.properties
+
+    def get_name(self):
+        return self.vaname
+
+    def get_type(self):
+        return (SharedStack,self.vtype,self.capacity)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        gc.get_decl().writeln('#pragma netro reglocked register')
+        gc.get_decl().writeln('register< bit<32> >({}) {};'.format(self.capacity, self.reg_name_1))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.value_check))
+        gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.hash_name_1))
+        if self.two_hash_funcs:
+            gc.get_decl().writeln('register< bit<32> >({}) {};'.format(self.capacity, self.reg_name_2))
+            gc.get_decl().writeln('{} {};'.format(uint32_t.get_p4_type(), self.hash_name_2))
+            gc.get_decl().writeln('bit<32> {};'.format(self.hashres_name_2))
+        gc.get_decl().writeln('bit<32> {};'.format(self.hashres_name_1))
+        return gc
+
+class GeneralMaybeContains(Command):
+    
+    def __init__(self,result: str, bloom_filter:str,values:List,env=None):
+        self.bloom_filter = bloom_filter
+        self.values = values
+        self.env = env
+        self.result_var_name = result
+        if env!=None:
+            self.check()
+
+    def check(self):
+        pass
+        
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        bloom_filter = self.env.get_varinfo(self.bloom_filter)
+        values = [(self.env.get_varinfo(value)["handle"]) for value in self.values]
+        properties = bloom_filter['properties']
+        self.result = self.env.get_varinfo(self.result_var_name)['handle']        
+        gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, {{{}}}, 32w15);'.format(properties["hash_name_1"], ",".join(values)))
+        if properties["two_hash_funcs"]:
+            gc.get_apply().writeln('hash({}, HashAlgorithm.csum16, (bit<32>) 0, {{{}}}, 32w15);'.format(bloomfilter.hash_name_2, ",".join(values)))
+        gc.get_apply().writeln('{}.read({}, {});'.format(properties["reg_name_1"], properties["hashres_name_1"], properties["hash_name_1"]))
+        if properties["two_hash_funcs"]:
+            gc.get_apply().writeln('{}.read({}, {});'.format(properties["reg_name_2"], properties["hashres_name_2"], properties["hash_name_2"]))
+        gc.get_apply().writeln( '{} = 0;'.format(self.result_var_name))
+        if properties["two_hash_funcs"]:            
+            gc.get_apply().writeln('if ({} > 0 && {} > 0)'.format(bloomfilter.hashres_name_1, bloomfilter.hashres_name_2) + '{')
+        else:
+            gc.get_apply().writeln('if ({} > 0)'.format(properties["hashres_name_1"]) + '{')
+        gc.get_apply().increase_indent()
+        gc.get_apply().writeln( '{} = 1;'.format(self.result_var_name))
+        gc.get_apply().decrease_indent()
+        gc.get_apply().writeln('};')
+
+        return gc
+
+class GeneralPutIntoBloom(Command):
+    
+    def __init__(self, bloom_filter:str,values:str,env=None):
+        self.bloom_filter = bloom_filter
+        self.values = values
+        self.env = env
+        if env!=None:
+            self.check()
+
+    def check(self):
+        True
+        
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        bloom_filter = self.env.get_varinfo(self.bloom_filter)
+        values = [(self.env.get_varinfo(value)["handle"]) for value in self.values]
+        properties = bloom_filter['properties']      
+        gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, {{{}}}, 32w15);'.format(properties["hash_name_1"], ",".join(values)))
+        if properties["two_hash_funcs"]:
+            gc.get_apply().writeln('hash({}, HashAlgorithm.csum16, (bit<32>) 0, {{{}}}, 32w15);'.format(bloomfilter.hash_name_2, ",".join(values)))
+        gc.get_apply().writeln('{}.read({}, {});'.format(properties["reg_name_1"], properties["hashres_name_1"], properties["hash_name_1"]))
+        gc.get_apply().writeln('{} = {} + 1;'.format(properties["hashres_name_1"], properties["hashres_name_1"]))
+        gc.get_apply().writeln('{}.write({}, {});'.format(properties["reg_name_1"], properties["hashres_name_1"], properties["hash_name_1"]))
+        if properties["two_hash_funcs"]:
+            gc.get_apply().writeln('{}.read({}, {});'.format(properties["reg_name_2"], properties["hashres_name_2"], properties["hash_name_2"]))
+            gc.get_apply().writeln('{} = {} + 1;'.format(properties["hashres_name_2"], properties["hashres_name_2"]))
+            gc.get_apply().writeln('{}.write({}, {});'.format(properties["reg_name_2"], properties["hashres_name_2"], properties["hash_name_2"]))
+
+        return gc
 
 # A Bloom filter is a probabilistic data structure.
 # False positive matches are possible, but false negatives are not.

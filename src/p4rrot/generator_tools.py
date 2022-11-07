@@ -558,11 +558,18 @@ class Environment:
         if vname not in self.info:
             for standard in self.standard_fields:
                 if standard.get_handle() == vname:
-                    return standard
+                    #return standard
+                    return { 'name':standard.get_handle(), 'type':standard.get_type(), 'writeable':True, 'place': 'standard', 'handle':standard.get_handle() }
         return self.info[vname]
     
     def has_var(self,vname:str):
-        return vname in self.info
+        if vname not in self.info:
+                for standard in self.standard_fields:
+                    if standard.get_handle() == vname:
+                        return True
+                return False
+        else:
+            return True
         
         
         

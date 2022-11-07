@@ -478,7 +478,6 @@ def test_check_control_plane_set():
     gc = check_control_plane_set.get_generated_code()
     generated_decl = gc.get_decl().get_code().strip().split("\n")
     generated_apply = gc.get_apply().get_code().strip().split("\n")
-    print(generated_apply)
     expected_decl = [
         "action setter_action_uid2_true() {",
         "\tallowed = 1;",
@@ -547,3 +546,23 @@ def test_xor_shared_array():
     expected_apply = ['result = xor_shared_array_action_uid1.execute(0);']
     assert generated_apply == expected_apply
     assert generated_decl == expected_decl
+
+def test_drop_packet():
+    UID.reset()
+    env = Environment(
+        [],
+        [],
+        [],
+        [],
+        [],
+        "inp",
+        "out",
+        "met",
+        [],
+        None,
+    )
+    drop_packet = DropPacket(env)
+    gc = drop_packet.get_generated_code()
+    generated_apply = gc.get_apply().get_code().strip().split("\n")
+    expected_apply = ['ig_dprsr_md.drop_ctl = 0x1;']
+    assert generated_apply == expected_apply

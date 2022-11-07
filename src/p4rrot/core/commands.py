@@ -218,6 +218,56 @@ class StrictAddition(StrictNumericTwoOperandCommand):
         ti = self.env.get_varinfo(self.target)
         test_env[self.target] = ti['type'].cast_value(test_env[self.operand_a] + test_env[self.operand_b])
 
+class LeftShift(Command):
+
+    def __init__(self,vname,value,env=None):
+        self.vname = vname
+        self.value = value
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.vname,self.env)
+        is_writeable(self.vname,self.env)
+        self.env.get_varinfo(self.vname)['type'].to_p4_literal(self.value)
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        vi  = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = {} << {};'.format(vi['handle'],vi['handle'],vi['type'].to_p4_literal(self.value)))
+        return gc
+    
+    def execute(self,test_env):
+        vi = self.env.get_varinfo(self.vname)
+        test_env[self.target] = ti['type'].cast_value(test_env[self.vname] << self.value)
+
+class RightShift(Command):
+
+    def __init__(self,vname,value,env=None):
+        self.vname = vname
+        self.value = value
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.vname,self.env)
+        is_writeable(self.vname,self.env)
+        self.env.get_varinfo(self.vname)['type'].to_p4_literal(self.value)
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        vi  = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = {} >> {};'.format(vi['handle'],vi['handle'],vi['type'].to_p4_literal(self.value)))
+        return gc
+    
+    def execute(self,test_env):
+        vi = self.env.get_varinfo(self.vname)
+        test_env[self.target] = ti['type'].cast_value(test_env[self.vname] >> self.value)
+
 
 class StrictSubtraction(StrictNumericTwoOperandCommand):
 
@@ -327,6 +377,87 @@ class Equals(StrictComparator):
 
     def execute(self,test_env):
         test_env[self.target] = test_env[self.operand_a] == test_env[self.operand_b]
+
+class MaskedEqualsConst(Command):
+
+    def __init__(self,target,vname,mask:int,const:int,env=None):
+        self.target = target
+        self.vname = vname
+        self.mask = mask
+        self.const = const
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.vname,self.env)
+        is_writeable(self.target,self.env)
+        assert self.env.get_varinfo(self.target)['type']==bool_t
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t  = self.env.get_varinfo(self.target)
+        a  = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = (BOOL_T)(bit<1>)({} & {} == {});'.format(t['handle'],a['handle'],self.mask,self.const))        
+        return gc
+    
+    def execute(self,test_env):
+        test_env[self.target] = test_env[self.vname] & self.mask == self.const
+
+class MaskedNotEqualsConst(Command):
+
+    def __init__(self,target,vname,mask:int,const:int,env=None):
+        self.target = target
+        self.vname = vname
+        self.mask = mask
+        self.const = const
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.vname,self.env)
+        is_writeable(self.target,self.env)
+        assert self.env.get_varinfo(self.target)['type']==bool_t
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t  = self.env.get_varinfo(self.target)
+        a  = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = (BOOL_T)(bit<1>)({} & {} != {});'.format(t['handle'],a['handle'],self.mask, self.const))        
+        return gc
+    
+    def execute(self,test_env):
+        test_env[self.target] = test_env[self.vname] & self.mask != self.const
+
+class EqualsConst(Command):
+
+    def __init__(self,target,vname,const:int,env=None):
+        self.target = target
+        self.vname = vname
+        self.const = const
+        self.env = env
+    
+        if self.env!=None:
+            self.check()
+            
+    def check(self):
+        var_exists(self.vname,self.env)
+        is_writeable(self.target,self.env)
+        assert self.env.get_varinfo(self.target)['type']==bool_t
+    
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        t  = self.env.get_varinfo(self.target)
+        a  = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = (BOOL_T)(bit<1>)({} == {});'.format(t['handle'],a['handle'],self.const))        
+        return gc
+    
+    def execute(self,test_env):
+        test_env[self.target] = test_env[self.vname] == self.const
+
 
 
 class LogicalNot(Command):
@@ -728,6 +859,102 @@ class CastVar(Command):
         ti = self.env.get_varinfo(self.target)
         test_env[self.target] = ti['type'].cast_value(test_env[self.source])
 
+class Table:
+    def __init__(self, name, actions, keys, size, const_entries, default_action = ""):
+        self.name = name
+        self.keys = keys
+        self.actions = actions
+        self.size = size
+        self.const_entries = const_entries
+        self.default_action = default_action
+
+    # TODO: create action class
+    # TODO: check types and signatures
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        declaration = gc.get_decl()
+        declaration.writeln("table {} {{".format(self.name))
+        declaration.increase_indent()
+        declaration.writeln("key = {")
+        declaration.increase_indent()
+        for key in self.keys:
+            declaration.writeln("{}: {};".format(key["name"], key["match_type"]))
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        declaration.writeln("actions = {")
+        declaration.increase_indent()
+        for action in self.actions:
+            declaration.writeln("{};".format(action))
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        declaration.writeln("size = {};".format(self.size))
+        if self.default_action:
+            declaration.writeln("const default_action = {};".format(self.default_action))
+        if self.const_entries:
+            declaration.writeln("const entries = {")
+            declaration.increase_indent()
+            for entry in self.const_entries:
+                declaration.writeln(
+                    "{} : {}({});".format(
+                        entry["value"], entry["action"], ",".join(entry["parameters"])
+                    )
+                )
+            declaration.decrease_indent()
+            declaration.writeln("}")
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        return gc
+
+class ReadFromControlPlaneSet(Command):
+    def __init__(self, keys, targets, env=None):
+        self.targets = targets
+        self.keys = keys
+        self.env = env
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        target_infos = []
+        for target in self.targets:
+            target_infos.append(self.env.get_varinfo(target))
+        match = []
+        for key in self.keys:
+            match.append([self.env.get_varinfo(key["name"]),key["match_type"]])
+        declaration = gc.get_decl()
+        table_name = "control_plane_set_table_" + UID.get()
+        apply = gc.get_apply()
+        setter_action = "setter_action_" + UID.get()
+        parameters = [p["type"].get_p4_type() + "  param" + UID.get() for p in target_infos]
+        declaration.writeln("action {}({}) {{".format(setter_action, ",".join(parameters)))
+        declaration.increase_indent()
+        for i in range(len(parameters)):
+            declaration.writeln(
+                "{} = {};".format(target_infos[i]["handle"], parameters[i].split(" ")[2])
+            )
+        declaration.decrease_indent()
+        declaration.writeln("}")
+        actions = [setter_action]
+        try:
+            key = [
+                {"name": part_key[0]["handle"], "match_type": part_key[1]} for part_key in match
+            ]
+        except TypeError:
+            key = [
+                {"name": part_key[0].get_handle(), "match_type": part_key[1]} for part_key in match
+            ]
+        size = 1
+        const_entries = []
+        eval_table = Table(
+            table_name, actions, key, size, const_entries
+        )
+        gc.concat(eval_table.get_generated_code())
+        apply.writeln("{}.apply();".format(table_name))
+        return gc
+
+    def check(self):
+        pass
+
+    def execute(self, test_env):
+        pass
 
 
 class TableCaseBlock(Block):
@@ -976,3 +1203,4 @@ class IfExpr(Command):
             self.then_block.test(test_env)
         elif self.else_block!=None:
             self.else_block.test(test_env)
+

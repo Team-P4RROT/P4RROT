@@ -648,7 +648,7 @@ class Digest(Command):
         pass
 
     def get_generated_code(self):
-        self.values = [(self.env.get_varinfo(value).get_handle(), self.env.get_varinfo(value).get_type()) for value in self.values]
+        self.values = [(self.env.get_varinfo(value)["handle"], self.env.get_varinfo(value)["type"]) for value in self.values]
         gc = GeneratedCode()
         names = [
             (name.split(".")[-1] + "_" + str(UID.get()), given_type)

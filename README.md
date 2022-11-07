@@ -18,9 +18,7 @@ Based on a Python script and a P4 template, P4RROT generates P4 code that can be
 
 ## Supported targets
 
-P4RROT is a very young project. The current code base supports both the BMv2 and the Netronome NFP.
-
-We plan to add Tofino specific elements as well.
+P4RROT is a very young project. The current code base supports BMv2,Netronome NFP and Tofino.
 
 ## Getting started
 
@@ -33,3 +31,7 @@ A hands-on Hello World tutorial is also available at [examples/hello-world](exam
 Any kind of contribution is appreciated ranging from tutorial writing to bug fixes and implementing new features. In short, we use GitHub to host code, track issues and feature requests, as well as accept pull requests.
 
 Read our [Contributing Guidelines](CONTRIBUTING.md) for more details.
+
+## Discalimer
+
+The library is released under MIT license but please note that some of the tests, examples and templates might have different licensing.
