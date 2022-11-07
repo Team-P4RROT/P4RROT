@@ -1,6 +1,8 @@
 import sys
 sys.path.append('./src/')
 
+import pytest
+
 from p4rrot.known_types import KnownType
 from typing import Dict, List, Tuple
 from p4rrot.standard_fields import *
@@ -383,3 +385,28 @@ def test_switch_case():
         print(env)
         assert env['r']==r
 
+
+@pytest.mark.parametrize('x,y',[(5,7),(9,5),(11,11),(77,9),(0,9)])
+def test_switch_table(x,y):
+    UID.reset()
+
+    fp = FlowProcessor(
+            istruct = [('x',uint8_t),('y',uint8_t)],
+            locals  = [('l',bool_t)],
+        )
+
+    (
+    fp
+    .add(SwitchTable(['x']))
+        .Case([5])
+            .add(AssignConst('y',7))
+        .Case([9])
+            .add(AssignConst('y',5))
+        .Case([11])
+            .add(AssignConst('y',11))
+        .Default()
+            .add(AssignConst('y',9))
+    .EndSwitch()
+    )  
+
+    assert fp.test({'x':x,'y':0}) == {'x':x,'y':y} 

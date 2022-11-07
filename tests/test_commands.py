@@ -252,3 +252,15 @@ def test_clone_packet():
     generated_apply = gc.get_apply().get_code().strip().split("\n")
     expected_apply = ['clone(CloneType.I2E, 250);']
     assert generated_apply == expected_apply
+
+    
+def test_expr_to_p4():
+    class FakeEnv(Environment):
+        def __init__(self):
+            pass
+
+        def get_varinfo(self,v):
+            return {'handle':'replaced_'+v}
+    assert expr_to_p4('a = a.a + a + b + c/**/',FakeEnv()) == 'replaced_a = a.a + replaced_a + replaced_b + c/**/'
+
+    

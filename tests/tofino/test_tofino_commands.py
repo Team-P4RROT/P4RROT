@@ -1,4 +1,5 @@
 import sys
+import random
 
 sys.path.append("../../src/")
 
@@ -6,137 +7,68 @@ from p4rrot.core.commands import *
 from p4rrot.tofino.commands import *
 from p4rrot.tofino.stateful import *
 
+# Random
 
-class MockUsingBlock:
-    def __init__(self):
-        self.gc = GeneratedCode()
-        self.gc.get_decl().writeln("register_data = register_data + 1;")
-        self.gc.get_decl().writeln("out_data = register_data;")
-
-    def get_generated_code(self):
-        return self.gc
-
-
-def test_using_block():
-    mock_block = {  # we are only interested in whether the reference gets stored
-        "a": 12
-    }
-    mock_env = {"b": 10}
-    u_block = UsingBlock(mock_env, mock_block)
-    assert u_block.EndUsing() == mock_block
-
-
-def test_simple_using_command():
-    mock_block = {"a": 12}
-    mock_env = {"b": 10}
-    u_block = UsingBlock(mock_env, mock_block)
-    sharred_array_action_params = [
-        {"type": uint16_t, "mode": "inout", "name": "register_data"}
-    ]
-    using = Using(
-        "action_1",
-        "shared_a_1",
-        uint16_t,
-        uint16_t,
-        uint16_t,
-        sharred_array_action_params,
-        u_block,
-    )
-    generated_lines = (
-        using.get_generated_code().get_decl().get_code().strip().split("\n")
-    )
-    expected_lines = [
-        "RegisterAction<bit<16>,bit<16>,bit<16>>(shared_a_1) action_1 = {",
-        "void apply(inout bit<16> register_data){",
-        "\t\t\t}",
-        "};",
-    ]
-    assert generated_lines == expected_lines
-
-
-def test_using_command_with_statements():
-    mock_block = {"a": 12}
-    mock_env = {"b": 10}
-    u_block = MockUsingBlock()
-    sharred_array_action_params = [
-        {"type": uint16_t, "mode": "inout", "name": "register_data"},
-        {"type": uint16_t, "mode": "out", "name": "out_data"},
-    ]
-    using = Using(
-        "action_1",
-        "shared_a_1",
-        uint16_t,
-        uint16_t,
-        uint16_t,
-        sharred_array_action_params,
-        u_block,
-    )
-    generated_lines = (
-        using.get_generated_code().get_decl().get_code().strip().split("\n")
-    )
-    expected_lines = [
-        "RegisterAction<bit<16>,bit<16>,bit<16>>(shared_a_1) action_1 = {",
-        "void apply(inout bit<16> register_data, out bit<16> out_data){",
-        "\t\tregister_data = register_data + 1;",
-        "\t\tout_data = register_data;",
-        "\t}",
-        "};",
-    ]
-    assert generated_lines == expected_lines
-
-
-def test_using_command_should_return():
-
-    sharred_array_action_params = [
-        {"type": uint16_t, "mode": "inout", "name": "register_data"},
-        {"type": uint16_t, "mode": "out", "name": "out_data"},
-    ]
-    using = Using(
-        "action_1",
-        "shared_a_1",
-        uint16_t,
-        uint16_t,
-        uint16_t,
-        sharred_array_action_params,
+def test_tofino_assign_random_value():
+    fp = FlowProcessor(
+        istruct = [('a',uint8_t),('b',uint16_t),('c',uint32_t),('d',uint64_t)],
     )
 
-    u_block = MockUsingBlock()
-    using_b = Using(
-        "action_1",
-        "shared_a_1",
-        uint16_t,
-        uint16_t,
-        uint16_t,
-        sharred_array_action_params,
-        u_block,
+    (
+    fp
+    .add(TofinoAssignRandomValue('a'))
+    .add(TofinoAssignRandomValue('b'))
+    .add(TofinoAssignRandomValue('c'))
+    .add(TofinoAssignRandomValue('d'))
+    )  
+
+    random.seed(76576)
+    for _ in range(100):
+        res = fp.test({'a':0,'b':0,'c':0,'d':0})
+        assert 0 <= res['a'] <= 2**8-1\
+           and 0 <= res['b'] <= 2**16-1\
+           and 0 <= res['c'] <= 2**32-1\
+           and 0 <= res['d'] <= 2**64-1 
+
+# Using
+
+def test_using_code_generation_without_return():
+    UID.reset()
+    fp = FlowProcessor(istruct=[('index',uint8_t),('value',uint32_t)],state=[SharedArray('store',uint32_t,uint8_t,256)])
+    (
+    fp
+    .add(Using('store','index'))
+            .add(StrictAssignVar('store','value'))
+        .EndUsing()
     )
+    gen_decl = fp.get_generated_code().get_decl().get_code()
+    exp_decl = """RegisterAction<bit<32>,_,bit<32>>(store) regac_uid2 = {
+                        void apply(inout bit<32> store,  out bit<32> None){
+                                store = hdr.genhdr_uid1.value;
+                        }
+                  };"""
+    assert gen_decl.split() == exp_decl.split()
 
-    assert using.should_return()
-    assert not using_b.should_return()
 
-
-def test_using_command_return_object():
-
-    mock_block = {  # we are only interested in whether the reference gets stored
-        "a": 12
-    }
-    sharred_array_action_params = [
-        {"type": uint16_t, "mode": "inout", "name": "register_data"},
-        {"type": uint16_t, "mode": "out", "name": "out_data"},
-    ]
-    using = Using(
-        "action_1",
-        "shared_a_1",
-        uint16_t,
-        uint16_t,
-        uint16_t,
-        sharred_array_action_params,
+def test_using_code_generation_with_return():
+    UID.reset()
+    fp = FlowProcessor(istruct=[('index',uint8_t),('value',uint32_t),('result',uint32_t)],state=[SharedArray('store',uint32_t,uint8_t,256)])
+    (
+    fp
+    .add(Using('store','index',return_var='result'))
+            .add(StrictAssignVar('result','store'))
+            .add(StrictAssignVar('store','value'))
+        .EndUsing()
     )
-
-    returned_object = using.get_return_object(mock_block)
-    assert isinstance(returned_object, UsingBlock)
-    assert returned_object.parent_block == mock_block
-
+    gen_decl = fp.get_generated_code().get_decl().get_code()
+    print(gen_decl)
+    exp_decl = """RegisterAction<bit<32>,_,bit<32>>(store) regac_uid2 = {
+                        void apply(inout bit<32> store,  out bit<32> result){
+                                result = store;
+                                store = hdr.genhdr_uid1.value;
+                        }
+                  };"""
+    assert gen_decl.split() == exp_decl.split()
 
 # shared_array, number_type, index_type, index_to_increase, step = 1, read_new_to = None, env=None):
 
