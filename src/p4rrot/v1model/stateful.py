@@ -265,7 +265,7 @@ class GeneralBloomFilter(SharedElement):
         self.hash_name_2 = '_' + self.vaname + '_hash_2' + UID.get()
         self.hashres_name_1 = '_' + self.vaname + '_result_1' + UID.get()
         self.hashres_name_2 = '_' + self.vaname + '_result_2' + UID.get()
-        self.properties = {'capacity': capacity, 'hash_name_1' : self.hash_name_1, 'two_hash_funcs' : self.two_hash_funcs,
+        self.properties = {'capacity': capacity, 'hash_name_1' : self.hash_name_1, 'hash_name_2' : self.hash_name_2, 'two_hash_funcs' : self.two_hash_funcs,
         "reg_name_1" : self.reg_name_1, "reg_name_2" : self.reg_name_2, "hashres_name_1" : self.hashres_name_1, "hashres_name_2" : self.hashres_name_2}
 
     def get_properties(self):
@@ -346,7 +346,7 @@ class GeneralPutIntoBloom(Command):
         properties = bloom_filter['properties']      
         gc.get_apply().writeln('hash({}, HashAlgorithm.crc16, (bit<32>) 0, {{{}}}, 32w15);'.format(properties["hash_name_1"], ",".join(values)))
         if properties["two_hash_funcs"]:
-            gc.get_apply().writeln('hash({}, HashAlgorithm.csum16, (bit<32>) 0, {{{}}}, 32w15);'.format(bloomfilter.hash_name_2, ",".join(values)))
+            gc.get_apply().writeln('hash({}, HashAlgorithm.csum16, (bit<32>) 0, {{{}}}, 32w15);'.format(properties["hash_name_2"], ",".join(values)))
         gc.get_apply().writeln('{}.read({}, {});'.format(properties["reg_name_1"], properties["hashres_name_1"], properties["hash_name_1"]))
         gc.get_apply().writeln('{} = {} + 1;'.format(properties["hashres_name_1"], properties["hashres_name_1"]))
         gc.get_apply().writeln('{}.write({}, {});'.format(properties["reg_name_1"], properties["hashres_name_1"], properties["hash_name_1"]))
