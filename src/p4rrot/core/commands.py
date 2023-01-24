@@ -906,10 +906,11 @@ class Table:
         return gc
 
 class ReadFromControlPlaneSet(Command):
-    def __init__(self, keys, targets, env=None):
+    def __init__(self, keys, targets,size=256, env=None):
         self.targets = targets
         self.keys = keys
         self.env = env
+        self.size = size
 
     def get_generated_code(self):
         gc = GeneratedCode()
@@ -941,10 +942,10 @@ class ReadFromControlPlaneSet(Command):
             key = [
                 {"name": part_key[0].get_handle(), "match_type": part_key[1]} for part_key in match
             ]
-        size = 1
+        
         const_entries = []
         eval_table = Table(
-            table_name, actions, key, size, const_entries
+            table_name, actions, key, self.size, const_entries
         )
         gc.concat(eval_table.get_generated_code())
         apply.writeln("{}.apply();".format(table_name))
