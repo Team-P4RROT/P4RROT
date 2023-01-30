@@ -29,7 +29,7 @@ fp = FlowProcessor(
 )
 (
 fp
-.add(CheckControlPlaneSet(["origin_timestamp"], "exploit"))
+.add(CheckControlPlaneSet(["origin_timestamp"], "exploit", size=1))
 .add(If("exploit"))
 .add(DropPacket())
 .EndIf()

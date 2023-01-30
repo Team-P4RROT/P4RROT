@@ -707,8 +707,9 @@ class Digest(Command):
 
 
 class CheckControlPlaneSet(Command):
-    def __init__(self, keys, target, table_name = None, env=None):
+    def __init__(self, keys, target, size=256, table_name = None, env=None):
         self.target = target
+        self.size = size
         self.keys = keys
         self.table_name = table_name
         self.env = env
@@ -740,11 +741,11 @@ class CheckControlPlaneSet(Command):
             key = [
                 {"name": part_key.get_handle(), "match_type": "exact"} for part_key in match
             ]
-        size = 1
+
         const_entries = []
         default_action = setter_action + "_false"
         eval_table = Table(
-            table_name, actions, key, size, const_entries, default_action
+            table_name, actions, key, self.size, const_entries, default_action
         )
         gc.concat(eval_table.get_generated_code())
         apply.writeln("{}.apply();".format(table_name))
@@ -757,10 +758,11 @@ class CheckControlPlaneSet(Command):
         pass
 
 class ReadFromControlPlaneSet(Command):
-    def __init__(self, keys, targets, env=None):
+    def __init__(self, keys, targets, size=256, env=None):
         self.targets = targets
         self.keys = keys
         self.env = env
+        self.size = size
 
     def get_generated_code(self):
         gc = GeneratedCode()
@@ -792,10 +794,10 @@ class ReadFromControlPlaneSet(Command):
             key = [
                 {"name": part_key.get_handle(), "match_type": "exact"} for part_key in match
             ]
-        size = 1
+            
         const_entries = []
         eval_table = Table(
-            table_name, actions, key, size, const_entries
+            table_name, actions, key, self.size, const_entries
         )
         gc.concat(eval_table.get_generated_code())
         apply.writeln("{}.apply();".format(table_name))

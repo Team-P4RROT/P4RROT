@@ -473,7 +473,7 @@ def test_check_control_plane_set():
         None,
     )
     check_control_plane_set = CheckControlPlaneSet(
-        ["hdr.ipv4.src", "hdr.udp.srcPort"], "allowed", None, env
+        ["hdr.ipv4.src", "hdr.udp.srcPort"], "allowed", size=1, env=env
     )
     gc = check_control_plane_set.get_generated_code()
     generated_decl = gc.get_decl().get_code().strip().split("\n")
