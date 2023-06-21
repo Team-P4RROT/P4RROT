@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  p4rrot_dev:
+    build: .
+    privileged: true # needed to set new routes
+    volumes:
+      - ./:/nikss
+    stdin_open: true # docker run -i
