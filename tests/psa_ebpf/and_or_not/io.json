@@ -1,0 +1,4 @@
+{
+  "input": ["FF", "FT", "TF", "TT"],
+  "output": ["FFT", "FTT", "FTF", "TTF"]
+}
