@@ -49,10 +49,14 @@ class TestPSACompilation:
 
     def dynamic_test(self, test_dir: str):
         self.psh.setup_two_host_connection_template(os.path.join(test_dir, "main.o"))
-        self.psh.start_nc_server()
-        input("Server should be up now. press enter to kill it?")
-        self.psh.stop_nc_server()
+        self.psh.start_nc_servers()
+        try:
+            self.psh.send_dynamic_payload(os.path.join(test_dir, "io.json"))
+        except AssertionError:
+            self.psh.stop_nc_servers()
+            raise
 
+        self.psh.stop_nc_servers()
 
 
     @pytest.mark.parametrize("test_dir_path", test_dirs)
