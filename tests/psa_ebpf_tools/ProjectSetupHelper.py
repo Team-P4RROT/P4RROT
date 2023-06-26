@@ -164,7 +164,7 @@ class ProjectSetupHelper:
             try: 
                 assert outputs[i].encode('utf-8') ==outs
             except AssertionError:
-                self.logger.error(f"Expected {outputs[0].encode('utf-8')}")
+                self.logger.error(f"Expected {outputs[i].encode('utf-8')}")
                 self.logger.error(f"Got {outs}")
                 raise
 
