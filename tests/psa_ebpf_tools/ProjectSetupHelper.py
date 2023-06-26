@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import subprocess
 import argparse
 from typing import Optional
-
+import json
 
 class ProjectSetupHelper:
     def __init__(self, env_file_path: Optional[str] = None):
@@ -45,8 +45,9 @@ class ProjectSetupHelper:
 
 
         self.server_process: Optional[subprocess.Popen[bytes]] = None
+        self.client_process: Optional[subprocess.Popen[bytes]] = None
 
-
+    
     def log_process_failure(self, res: subprocess.CompletedProcess):
         self.logger.warning(f"The infrastructure setup script failed... (ret_code: {res.returncode})")
         self.logger.warning("output:")
@@ -121,26 +122,84 @@ class ProjectSetupHelper:
                         self.log_process_failure(res)
                         raise Exception
 
-    def start_nc_server(self):
+
+    def read_io_json(self, json_path):
+        try:
+            with open(json_path,'r') as f:
+                io = json.load(f)
+        except FileNotFoundError as e:
+            raise
+
+        i = io["input"]
+
+        o = io["output"] 
+
+        # self.logger.info(io)
+        # self.logger.info(i)
+        # self.logger.info(o)
+        return (i, o)
+
+
+
+    def send_dynamic_payload(self, json_path):
+        try:
+            inputs, outputs = self.read_io_json(json_path)
+        except FileNotFoundError as e:
+            print(e)
+            return
+
+        for i in range(len(inputs)):
+            self.client_process = subprocess.Popen(
+                ["ip", "netns", "exec", "h2", "nc", "-u", self.host_1_ip, "5555"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE
+            )
+            self.logger.info(f"Testing {inputs[i]}")
+            try:
+                outs, errs = self.client_process.communicate(f"{inputs[i]}".encode(encoding="utf-8"), timeout=1)
+            except subprocess.TimeoutExpired:
+                self.client_process.kill()
+                outs, errs = self.client_process.communicate()
+
+            try: 
+                assert outputs[i].encode('utf-8') ==outs
+            except AssertionError:
+                self.logger.error(f"Expected {outputs[0].encode('utf-8')}")
+                self.logger.error(f"Got {outs}")
+                raise
+
+
+    def start_nc_servers(self):
         if self.server_process is not None:
             self.logger.info("server process is already running")
             return
 
-        self.server_process = subprocess.Popen(["ip", "netns", "exec", "h1", "nc", "-ul", "-k", "-p", "5555"])
-        self.logger.info("server process started")
-        # self.server_process.communicate("A\n".encode(encoding="utf-8"))
+        self.server_process = subprocess.Popen(
+            ["ip", "netns", "exec", "h1", "nc", "-ul", "-k", "-p", "5555"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE
+            )
+        self.logger.info("server processes started")
 
-    def stop_nc_server(self):
+
+    def stop_nc_servers(self):
         if self.server_process is None:
             self.logger.info("server process is already shutdown")
             return
 
         self.server_process.terminate()
+        self.client_process.terminate()
 
         while self.server_process.poll() is None:
             self.logger.info("waiting on the process to be terminated...")
             time.sleep(1)
 
+        while self.client_process.poll() is None:
+            self.logger.info("waiting on the process to be terminated...")
+            time.sleep(1)
+
+        self.server_process = None
+        self.server_process = None
 
 
     def clean(self):
