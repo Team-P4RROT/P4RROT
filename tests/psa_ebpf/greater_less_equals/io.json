@@ -1,0 +1,4 @@
+{
+  "input": ["AA", "BA", "AB"],
+  "output": ["FFT", "TFF", "FTF"]
+}

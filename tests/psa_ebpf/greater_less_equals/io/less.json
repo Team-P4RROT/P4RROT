@@ -1,0 +1,5 @@
+//result format (T: true, F: false): <greater than><less than><equals>
+{
+  "in": "AB",
+  "out": "FTF"
+}
