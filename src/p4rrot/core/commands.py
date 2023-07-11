@@ -906,11 +906,18 @@ class Table:
         return gc
 
 class ReadFromControlPlaneSet(Command):
-    def __init__(self, keys, targets, table_name="control_plane_set_table", action_name="setter_action", size=256, env=None):
+    def __init__(self, keys, targets, table_name=None, action_name=None, size=256, env=None):
         self.targets = targets
         self.keys = keys
-        self.table_name = table_name
-        self.action_name = action_name
+        if table_name is None:
+            self.table_name = "control_plane_set_table_" + UID.get()
+        else:
+            self.table_name = table_name
+
+        if action_name is None:
+            self.action_name = "setter_action_" + UID.get()
+        else:
+            self.action_name = action_name
         self.env = env
         self.size = size
 
