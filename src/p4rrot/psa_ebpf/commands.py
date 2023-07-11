@@ -36,3 +36,26 @@ class AssignRandomValue(Command):
         max_value = self.env.get_varinfo(self.rngname)['max_value']
         test_env[self.vname] = random.randint(target_type.cast_value(min_value),target_type.cast_value(max_value))
 
+
+class AssignHash(Command):
+    def __init__(self, t_name, s_name, hash_name, env=None):
+        self.env = env
+        self.t_name = t_name
+        self.s_name = s_name
+        self.hash_name = hash_name
+
+        if self.env != None:
+            self.check()
+
+    def check(self):
+        var_exists(self.t_name, self.env)
+        var_exists(self.s_name, self.env)
+        var_exists(self.hash_name, self.env)
+        is_writeable(self.t_name, self.env)
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        target = self.env.get_varinfo(self.t_name)
+        source = self.env.get_varinfo(self.s_name)
+        gc.get_apply().writeln('{} = {}.get_hash({});'.format(target['handle'], self.hash_name, source['handle']))
+        return gc
