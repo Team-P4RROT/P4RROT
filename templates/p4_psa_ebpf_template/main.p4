@@ -41,7 +41,7 @@ struct empty_t {}
 //                      I N G R E S S
 // ---------------------------------------------------------
 
-parser DemoIngressParser(packet_in pkt,
+parser ebpfIngressParser(packet_in pkt,
                          out       headers hdr,
                          inout     metadata meta,
                          in        psa_ingress_parser_input_metadata_t istd,
@@ -109,7 +109,7 @@ parser DemoIngressParser(packet_in pkt,
 
 }
 
-control DemoIngress(inout headers hdr,
+control ebpfIngress(inout headers hdr,
                     inout metadata meta,
                     in    psa_ingress_input_metadata_t  istd,
                     inout psa_ingress_output_metadata_t ostd) {
@@ -192,7 +192,7 @@ control DemoIngress(inout headers hdr,
     }
 }
 
-control DemoIngressDeparser(packet_out pkt,
+control ebpfIngressDeparser(packet_out pkt,
                             out        empty_t clone_i2e_meta,
                             out        empty_t resubmit_meta,
                             out        empty_t normal_meta,
@@ -231,7 +231,7 @@ control DemoIngressDeparser(packet_out pkt,
 //                      E G R E S S
 // ---------------------------------------------------------
 
-parser DemoEgressParser(packet_in buffer,
+parser ebpfEgressParser(packet_in buffer,
                         out       headers hdr,
                         inout     metadata meta,
                         in        psa_egress_parser_input_metadata_t istd,
@@ -244,7 +244,7 @@ parser DemoEgressParser(packet_in buffer,
     }
 }
 
-control DemoEgress(inout headers hdr,
+control ebpfEgress(inout headers hdr,
                    inout metadata meta,
                    in    psa_egress_input_metadata_t  istd,
                    inout psa_egress_output_metadata_t ostd) {
@@ -253,7 +253,7 @@ control DemoEgress(inout headers hdr,
     }
 }
 
-control DemoEgressDeparser(packet_out packet,
+control ebpfEgressDeparser(packet_out packet,
                            out        empty_t clone_e2e_meta,
                            out        empty_t recirculate_meta,
                            inout      headers hdr,
@@ -265,7 +265,7 @@ control DemoEgressDeparser(packet_out packet,
     }
 }
 
-IngressPipeline(DemoIngressParser(), DemoIngress(), DemoIngressDeparser()) ip;
-EgressPipeline(DemoEgressParser(), DemoEgress(), DemoEgressDeparser()) ep;
+IngressPipeline(ebpfIngressParser(), ebpfIngress(), ebpfIngressDeparser()) ip;
+EgressPipeline(ebpfEgressParser(), ebpfEgress(), ebpfEgressDeparser()) ep;
 
 PSA_Switch(ip, PacketReplicationEngine(), ep, BufferingQueueingEngine()) main;
