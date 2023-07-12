@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 from p4rrot.standard_fields import *
 from p4rrot.generator_tools import *
 from p4rrot.checks import *
+from p4rrot.psa_ebpf.known_types import * 
 import random
 
 class AssignRandomValue(Command):
@@ -59,3 +60,29 @@ class AssignHash(Command):
         source = self.env.get_varinfo(self.s_name)
         gc.get_apply().writeln('{} = {}.get_hash({});'.format(target['handle'], self.hash_name, source['handle']))
         return gc
+
+
+class GetTimestamp(Command):
+    def __init__(self, vname, env=None):
+        self.env = env
+        self.vname = vname
+
+        if self.env != None:
+            self.check()
+
+    
+    def check(self):
+        var_exists(self.vname, self.env)
+        assert self.env.get_varinfo(self.vname)['type'] == timestamp_t
+        is_writeable(self.vname, self.env)
+
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        vi = self.env.get_varinfo(self.vname)
+        gc.get_apply().writeln('{} = istd.ingress_timestamp;'.format(vi['handle']))
+        return gc
+
+    
+    def execute(self, test_env):
+        pass
