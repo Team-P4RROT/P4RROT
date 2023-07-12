@@ -186,7 +186,10 @@ control ebpfIngress(inout headers hdr,
                 hdr.tcp.csum = 0;
             }
 
-        }else {
+        } else if (meta.postprocessing == DROP) {
+            ingress_drop(ostd);
+        }
+        else {
             forward.apply();
         }
     }
