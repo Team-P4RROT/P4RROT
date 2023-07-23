@@ -79,7 +79,7 @@ class GetTimestamp(Command):
     def get_generated_code(self):
         gc = GeneratedCode()
         vi = self.env.get_varinfo(self.vname)
-        gc.get_apply().writeln('{} = (u64)istd.ingress_timestamp;'.format(vi['handle']))
+        gc.get_apply().writeln('{} = (bit<64>) istd.ingress_timestamp;'.format(vi['handle']))
         return gc
 
     
