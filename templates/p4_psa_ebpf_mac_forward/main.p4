@@ -127,7 +127,7 @@ control ebpfIngress(inout headers hdr,
 
     table forward {
         key = {
-            hdr.ethernet.dst_addr  : exact;
+            hdr.ethernet.dstAddr  : exact;
         }
 
         actions = {

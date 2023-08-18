@@ -123,7 +123,7 @@ control ebpfIngress(inout headers hdr,
 
     table forward {
         key = {
-            hdr.ipv4.dst_addr   : exact;
+            hdr.ipv4.dst  : exact;
         }
 
         actions = {
