@@ -1,4 +1,5 @@
-// Template for simple in-port based forwarding
+// Template for simple mac based based forwarding
+
 #include <core.p4>
 #include <psa.p4>
 #define BOOL_T bit<8>
@@ -41,7 +42,7 @@ struct empty_t {}
 //                      I N G R E S S
 // ---------------------------------------------------------
 
-parser ebpfIngressParser(packet_in pkt,
+parser ebpfIngressParser(packet_in packet,
                          out       headers hdr,
                          inout     metadata meta,
                          in        psa_ingress_parser_input_metadata_t istd,
@@ -105,8 +106,6 @@ parser ebpfIngressParser(packet_in pkt,
     state update_udp_checksum {
         transition accept;
     }
-
-
 }
 
 control ebpfIngress(inout headers hdr,
@@ -118,13 +117,17 @@ control ebpfIngress(inout headers hdr,
         send_to_port(ostd, p);
     }
 
+    action forward_to_all_ports() {
+        
+    }
+
     action drop () {
         ingress_drop(ostd);
     }
 
     table forward {
         key = {
-            istd.ingress_port   : exact;
+            hdr.ethernet.dst_addr  : exact;
         }
 
         actions = {
@@ -138,8 +141,6 @@ control ebpfIngress(inout headers hdr,
     #include "a_declarations.p4"
 
     apply {
-        forward.apply();
-
         #include "a_apply.p4"
         if (hdr.tcp.isValid()){
             hdr.tcp.csum = 0;
