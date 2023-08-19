@@ -138,6 +138,8 @@ control ebpfIngress(inout headers hdr,
     #include "a_declarations.p4"
 
     apply {
+        forward.apply();
+
         #include "a_apply.p4"
         if (hdr.tcp.isValid()){
             hdr.tcp.csum = 0;
@@ -188,9 +190,6 @@ control ebpfIngress(inout headers hdr,
 
         } else if (meta.postprocessing == DROP) {
             ingress_drop(ostd);
-        }
-        else {
-            forward.apply();
         }
     }
 }
