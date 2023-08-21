@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 from p4rrot.standard_fields import *
 from p4rrot.generator_tools import *
 from p4rrot.checks import *
+from p4rrot.core.commands import *
 import random
 
 class AssignRandomValue(Command):
@@ -96,3 +97,58 @@ class GetTimestamp(Command):
     
     def execute(self, test_env):
         pass
+
+
+class Clone(Command):
+    def __init__(self, keys, table_name=None, action_name=None, env=None):
+        self.keys = keys
+        self.env = env
+        if table_name is None:
+            self.table_name = "clone_table" + UID.get()
+        else:
+            self.table_name=table_name
+
+        if action_name is None:
+            self.action_name = "setter_action_" + UID.get()
+        else:
+            self.action_name = action_name
+
+    
+    def check(self):
+        pass
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        decl = gc.get_decl()
+        decl.writeln(f"action {self.action_name}(CloneSessionId_t clone_session) {{")
+        decl.increase_indent()
+        decl.writeln("ostd.clone_session_id = clone_session;")
+        decl.writeln("ostd.clone = true;")
+        decl.decrease_indent()
+        decl.writeln("}")
+
+
+        apply = gc.get_apply()
+        match = []
+        for key in self.keys:
+            match.append(self.env.get_varinfo(key))
+        actions = [self.action_name, "NoAction"]
+
+        try:
+            key = [
+                {"name": part_key["handle"], "match_type": "exact"} for part_key in match
+            ]
+        except TypeError:
+            key = [
+                {"name": part_key.get_handle(), "match_type": "exact"} for part_key in match
+            ]
+        size = 256
+        const_entries = []
+        default_action = "NoAction"
+        eval_table = Table(
+            self.table_name, actions, key, size, const_entries, default_action
+        )
+        gc.concat(eval_table.get_generated_code())
+        apply.writeln("{}.apply();".format(self.table_name))
+
+        return gc
