@@ -8,10 +8,11 @@ import random
 
 class AssignRandomValue(Command):
 
-    def __init__(self, vname, rngname, env=None):
+    def __init__(self, vname, min_value, max_value, env=None):
         self.env = env
         self.vname=vname
-        self.rngname=rngname
+        self.min_value = min_value
+        self.max_value = max_value
 
         
         if self.env != None:
@@ -20,21 +21,31 @@ class AssignRandomValue(Command):
 
     def check(self):
         var_exists(self.vname, self.env)
-        var_exists(self.rngname, self.env)
+        assert self.env.get_varinfo(self.vname)['type'] in [ uint8_t, uint16_t ,uint32_t, uint64_t ], 'Not supported random generation'
+        target_type = self.env.get_varinfo(self.vname)['type']
         is_writeable(self.vname,self.env)
-        vars_have_the_same_type(self.vname, self.rngname, self.env)
 
 
     def get_generated_code(self):
         gc = GeneratedCode()
+        rng_name = "rng_"+UID.get()
+        target_type = self.env.get_varinfo(self.vname)['type']
+        rng_type = target_type.get_p4_type()
         vi  = self.env.get_varinfo(self.vname)
-        gc.get_apply().writeln('{} = {}.read();'.format(vi['handle'], self.rngname))
+        gc.get_decl().writeln('Random< {} >(({}){},({}){}) {};'.format(
+            rng_type,
+            rng_type,
+            self.min_value,
+            rng_type,
+            self.max_value,
+            rng_name
+        ))
+        gc.get_apply().writeln('{} = {}.read();'.format(vi['handle'], rng_name))
         return gc
 
 
     def execute(self, test_env):
-        min_value = self.env.get_varinfo(self.rngname)['min_value']
-        max_value = self.env.get_varinfo(self.rngname)['max_value']
+        target_type = self.env.get_varinfo(self.vname)['type']
         test_env[self.vname] = random.randint(target_type.cast_value(min_value),target_type.cast_value(max_value))
 
 
@@ -87,13 +98,69 @@ class GetTimestamp(Command):
     def execute(self, test_env):
         pass
 
-
+      
 class Multicast(Command):
     def __init__(self, keys, table_name=None, action_name=None, env=None):
         self.keys = keys
         self.env = env
         if table_name is None:
             self.table_name = "multicast_group_table" + UID.get()
+        else:
+            self.table_name=table_name
+
+        if action_name is None:
+            self.action_name = "setter_action_" + UID.get()
+        else:
+            self.action_name = action_name
+
+
+    def check(self):
+        pass
+
+    def get_generated_code(self):
+        gc = GeneratedCode()
+        decl = gc.get_decl()
+        decl.writeln(f"action {self.action_name}(MulticastGroup_t grp) {{")
+        decl.increase_indent()
+        decl.writeln("ostd.multicast_group = grp;")
+        decl.writeln("ostd.drop = false;")
+        decl.decrease_indent()
+        decl.writeln("}")
+
+
+        apply = gc.get_apply()
+        match = []
+        for key in self.keys:
+            match.append(self.env.get_varinfo(key))
+        actions = [self.action_name, "NoAction"]
+
+        try:
+            key = [
+                {"name": part_key["handle"], "match_type": "exact"} for part_key in match
+            ]
+        except TypeError:
+            key = [
+                {"name": part_key.get_handle(), "match_type": "exact"} for part_key in match
+            ]
+        size = 256
+        const_entries = []
+        default_action = "NoAction"
+        eval_table = Table(
+            self.table_name, actions, key, size, const_entries, default_action
+        )
+        gc.concat(eval_table.get_generated_code())
+        apply.writeln("{}.apply();".format(self.table_name))
+
+        return gc
+      
+
+class Clone(Command):
+
+    def __init__(self, keys, table_name=None, action_name=None, env=None):
+        self.keys = keys
+        self.env = env
+        if table_name is None:
+            self.table_name = "clone_table" + UID.get()
         else:
             self.table_name=table_name
 
@@ -109,10 +176,10 @@ class Multicast(Command):
     def get_generated_code(self):
         gc = GeneratedCode()
         decl = gc.get_decl()
-        decl.writeln(f"action {self.action_name}(MulticastGroup_t grp) {{")
+        decl.writeln(f"action {self.action_name}(CloneSessionId_t clone_session) {{")
         decl.increase_indent()
-        decl.writeln("ostd.multicast_group = grp;")
-        decl.writeln("ostd.drop = false;")
+        decl.writeln("ostd.clone_session_id = clone_session;")
+        decl.writeln("ostd.clone = true;")
         decl.decrease_indent()
         decl.writeln("}")
 

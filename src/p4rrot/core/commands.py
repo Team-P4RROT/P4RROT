@@ -906,9 +906,18 @@ class Table:
         return gc
 
 class ReadFromControlPlaneSet(Command):
-    def __init__(self, keys, targets,size=256, env=None):
+    def __init__(self, keys, targets, table_name=None, action_name=None, size=256, env=None):
         self.targets = targets
         self.keys = keys
+        if table_name is None:
+            self.table_name = "control_plane_set_table_" + UID.get()
+        else:
+            self.table_name = table_name
+
+        if action_name is None:
+            self.action_name = "setter_action_" + UID.get()
+        else:
+            self.action_name = action_name
         self.env = env
         self.size = size
 
@@ -921,9 +930,9 @@ class ReadFromControlPlaneSet(Command):
         for key in self.keys:
             match.append([self.env.get_varinfo(key["name"]),key["match_type"]])
         declaration = gc.get_decl()
-        table_name = "control_plane_set_table_" + UID.get()
+        table_name = self.table_name
         apply = gc.get_apply()
-        setter_action = "setter_action_" + UID.get()
+        setter_action = self.action_name
         parameters = [p["type"].get_p4_type() + "  param" + UID.get() for p in target_infos]
         declaration.writeln("action {}({}) {{".format(setter_action, ",".join(parameters)))
         declaration.increase_indent()
