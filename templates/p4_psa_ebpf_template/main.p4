@@ -123,9 +123,19 @@ control ebpfIngress(inout headers hdr,
     }
 
     table forward {
+        #ifdef MAC_FORWARDING
+        key = {
+            hdr.ethernet.dstAddr  : exact;
+        }
+        #elif IP_FORWARDING
+        key = {
+            hdr.ipv4.dst  : exact;
+        }
+        #else //default: port-based forwarding
         key = {
             istd.ingress_port   : exact;
         }
+        #endif
 
         actions = {
             drop;
